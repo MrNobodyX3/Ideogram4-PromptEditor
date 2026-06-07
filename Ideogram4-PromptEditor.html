@@ -912,8 +912,8 @@
       resizeCanvas();
       renderAll(true);
 
-      // Reset selection state indicator
-      DOM.presetSelector.value = "clean";
+      // Reflect the chosen preset in the selector
+      DOM.presetSelector.value = selection;
     }
 
     // Global Key Listener mapping (Delete / Backspace / CtrlZ / CtrlY / CtrlShiftZ)
