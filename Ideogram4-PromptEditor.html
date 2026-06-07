@@ -1729,13 +1729,7 @@
       } else {
         STYLE_FIELDS.forEach(sf => { fieldVals[sf.key] = state.styleDescription[sf.key] || ''; });
       }
-      const sd = {
-        aesthetics: fieldVals.aesthetics || '',
-        lighting: fieldVals.lighting || '',
-        medium: fieldVals.medium || ''
-      };
-      if (fieldVals.art_style) sd.art_style = fieldVals.art_style;
-      if (fieldVals.photo) sd.photo = fieldVals.photo;
+      const sd = { ...fieldVals };
       sd.color_palette = state.styleDescription.color_palette;
 
       const outputStructure = {
