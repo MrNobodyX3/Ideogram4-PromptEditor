@@ -635,6 +635,16 @@
       DOM.canvasAddBtn.addEventListener('click', handleAddElement);
       DOM.canvasDeselectBtn.addEventListener('click', () => { state.selectedId = null; renderAll(true); });
       DOM.presetSelector.addEventListener('change', handlePresetLoad);
+      // Allow re-selecting the same preset to reset
+      DOM.presetSelector.addEventListener('mousedown', function() {
+        this.dataset.prevVal = this.value;
+        this.value = '';
+      });
+      DOM.presetSelector.addEventListener('focusout', function() {
+        if (!this.value && this.dataset.prevVal) {
+          this.value = this.dataset.prevVal;
+        }
+      });
       DOM.snapToggleBtn.addEventListener('click', toggleSnap);
 
       DOM.alignLeftBtn.addEventListener('click', () => alignElement('left'));
@@ -737,6 +747,32 @@
     function handlePresetLoad(e) {
       const selection = e.target.value;
       if (!selection) return;
+
+      if (selection === 'clean') {
+        state.highLevelDescription = '';
+        state.background = '';
+        state.styleDescription = {
+          fields: [
+            {id: 'aesthetics', label: 'Aesthetics', value: ''},
+            {id: 'lighting', label: 'Lighting', value: ''},
+            {id: 'photo', label: 'Photo Style', value: ''},
+            {id: 'art_style', label: 'Art Style', value: ''},
+            {id: 'medium', label: 'Medium', value: ''},
+          ],
+          color_palette: []
+        };
+        state.elements = [];
+        state.selectedId = null;
+
+        DOM.hldInput.value = '';
+        DOM.backgroundInput.value = '';
+
+        syncAspectUI();
+        resizeCanvas();
+        renderAll(true);
+        DOM.presetSelector.value = 'clean';
+        return;
+      }
 
       const prompts = {
         cinematic: {
@@ -912,14 +948,9 @@
       state.elements = preset.elements.map(el => ({ ...el, id: generateId() }));
       state.selectedId = null;
 
-      if (selection === 'clean') {
-        state.highLevelDescription = '';
-        state.background = '';
-      } else {
-        state.highLevelDescription = preset.highLevelDescription;
-        state.background = preset.background;
-        if (preset.aspectRatio) state.aspectRatio = preset.aspectRatio;
-      }
+      state.highLevelDescription = preset.highLevelDescription;
+      state.background = preset.background;
+      if (preset.aspectRatio) state.aspectRatio = preset.aspectRatio;
 
       // Sync views
       DOM.hldInput.value = state.highLevelDescription;
