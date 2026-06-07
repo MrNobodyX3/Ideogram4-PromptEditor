@@ -155,7 +155,7 @@
               <div class="flex flex-wrap items-center gap-1.5">
                 <div id="global-palette-container" class="flex flex-wrap gap-1.5"></div>
                 <button id="add-global-color-btn" class="w-6 h-6 rounded-full border border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center text-slate-400 hover:text-indigo-500 transition">+</button>
-                <input type="color" id="global-color-picker" class="color-picker-input">
+                <input type="color" id="global-color-picker">
               </div>
             </div>
           </div>
@@ -241,8 +241,8 @@
 
       <!-- Scaled Workspace Draft Board -->
       <div id="canvas-wrapper" class="w-full h-full flex flex-col items-center justify-center p-16 overflow-hidden">
-        <div id="canvas-area" class="canvas-container bg-slate-900 shadow-2xl relative border border-slate-800 rounded-lg">
-          <svg id="snap-overlay" class="absolute inset-0 pointer-events-none z-30" viewBox="0 0 1000 1000" style="width:100%;height:100%"></svg>
+        <div id="canvas-area" class="bg-slate-900 shadow-2xl relative border border-slate-800 rounded-lg">
+          <svg id="snap-overlay" class="absolute inset-0 pointer-events-none z-30" viewBox="0 0 1000 1000"></svg>
         </div>
         <!-- Real-time dynamic scale monitor -->
         <div id="canvas-resolution" class="text-[10px] text-slate-500 font-mono mt-3 select-none">0 × 0px</div>
@@ -545,6 +545,38 @@
       return 'el_' + Math.random().toString(36).substr(2, 9);
     }
 
+    const _fitCtx = document.createElement('canvas').getContext('2d');
+    let _measureEl = null;
+
+    function calcTextScale(text, boxW, boxH) {
+      if (!text) return { size: Math.min(boxW, boxH, 300), scaleX: 1, scaleY: 1 };
+      const w = Math.max(20, boxW);
+      const h = Math.max(20, boxH);
+      const lines = text.split('\n');
+
+      if (!_measureEl) {
+        _measureEl = document.createElement('div');
+        _measureEl.style.cssText = 'position:absolute;left:0;top:0;white-space:pre;line-height:1;font-family:sans-serif;visibility:hidden;pointer-events:none;';
+        document.body.appendChild(_measureEl);
+      }
+
+      // Base font-size: scales with box height and line count
+      const baseSize = Math.max(8, Math.min(300, h / Math.max(1, lines.length)));
+
+      _measureEl.textContent = text;
+      _measureEl.style.fontSize = baseSize + 'px';
+      void _measureEl.offsetHeight;
+
+      const natW = _measureEl.scrollWidth;
+      const natH = _measureEl.scrollHeight;
+
+      return {
+        size: baseSize,
+        scaleX: w / Math.max(1, natW),
+        scaleY: h / Math.max(1, natH)
+      };
+    }
+
     // Dynamic ID parser converting element hooks into camelCase DOM Registry
     document.addEventListener("DOMContentLoaded", () => {
       const elementsToCache = [
@@ -707,21 +739,6 @@
       if (!selection) return;
 
       const prompts = {
-        clean: {
-          highLevelDescription: '',
-          background: '',
-          styleDescription: {
-            fields: [
-              {id: 'aesthetics', label: 'Aesthetics', value: ''},
-              {id: 'lighting', label: 'Lighting', value: ''},
-              {id: 'photo', label: 'Photo Style', value: ''},
-              {id: 'art_style', label: 'Art Style', value: ''},
-              {id: 'medium', label: 'Medium', value: ''},
-            ],
-            color_palette: []
-          },
-          elements: []
-        },
         cinematic: {
           aspectRatio: '21:9',
           highLevelDescription: 'A dramatic cinematic landscape at golden hour with sweeping mountain silhouettes, moody cloud formations, and warm sunlight piercing through the mist. A lone figure stands on a ridge overlooking a vast valley.',
@@ -1146,7 +1163,8 @@
           </div>
 
           <div class="space-y-1.5">
-            <input type="text" class="text-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2 py-1 outline-none focus:border-indigo-500 transition ${el.type !== 'text' ? 'hidden' : ''}" value="${el.text || ''}" placeholder="Verbatim text to render...">
+            <textarea rows="2" class="text-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2 py-1 outline-none focus:border-indigo-500 transition leading-relaxed resize-none custom-scroll ${el.type !== 'text' ? 'hidden' : ''}" placeholder="Verbatim text to render...">${el.text || ''}</textarea>
+
             <div>
               <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500">Description / Style</label>
               <textarea rows="2" class="desc-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2.5 py-1 outline-none focus:border-indigo-500 leading-relaxed custom-scroll" placeholder="Visual specifications...">${el.desc}</textarea>
@@ -1164,9 +1182,9 @@
 
         card.querySelector('.text-val-input').addEventListener('input', (e) => {
           el.text = e.target.value;
-          // Sync directly with canvas input if active on viewport
+          // Sync directly with canvas visual text element
           const inlineText = document.querySelector(`#box-${el.id} .inline-canvas-text`);
-          if (inlineText) inlineText.value = el.text;
+          if (inlineText) inlineText.textContent = el.text;
           debouncedSave();
         });
 
@@ -1249,19 +1267,41 @@
         box.style.width = `${(el.x2 - el.x1) / 10}%`;
         box.style.height = `${(el.y2 - el.y1) / 10}%`;
 
-        const tag = document.createElement('div');
-        tag.className = `absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-mono font-bold select-none pointer-events-none ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-850 text-slate-300'}`;
-        tag.innerHTML = `<span class="coords-display opacity-60 text-[7px]">${el.type.toUpperCase()} ${el.y1},${el.x1}</span>`;
-        box.appendChild(tag);
+        // Tag label for non-text elements
+        if (el.type !== 'text') {
+          const tag = document.createElement('div');
+          tag.className = `absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-mono font-bold select-none pointer-events-none ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-850 text-slate-300'}`;
+          tag.innerHTML = `<span class="coords-display opacity-60 text-[7px]">${el.type.toUpperCase()} ${el.y1},${el.x1}</span>`;
+          box.appendChild(tag);
+        }
+
+        // Visual text representation for text-type elements — always visible, fits to box
+        if (el.type === 'text') {
+          const cw = DOM.canvasArea.clientWidth;
+          const ch = DOM.canvasArea.clientHeight;
+          const boxW = cw * (el.x2 - el.x1) / 1000;
+          const boxH = ch * (el.y2 - el.y1) / 1000;
+          const { size, scaleX, scaleY } = calcTextScale(el.text, boxW, boxH);
+          const textWrap = document.createElement('div');
+          textWrap.className = 'absolute inset-0';
+          textWrap.style.cssText = 'display:flex;align-items:flex-start;justify-content:flex-start;overflow:hidden;pointer-events:none;';
+          const textEl = document.createElement('div');
+          textEl.className = 'inline-canvas-text';
+          textEl.style.cssText = `white-space:pre;color:white;font-size:${size}px;line-height:1;font-family:sans-serif;display:inline-block;transform-origin:top left;transform:scale(${scaleX},${scaleY});`;
+          textEl.textContent = el.text || '';
+          textWrap.appendChild(textEl);
+          box.appendChild(textWrap);
+        }
 
         // --- INLINE CANVAS EDITABLE INFORMATION ---
         const widthVal = el.x2 - el.x1;
         const heightVal = el.y2 - el.y1;
         const isLargeEnough = widthVal >= 180 && heightVal >= 120;
 
-        if (isLargeEnough) {
+        if (isLargeEnough && el.type !== 'text') {
           const inlineForm = document.createElement('div');
-          inlineForm.className = 'absolute inset-0 p-2 pt-6 flex flex-col gap-1 overflow-hidden justify-end pointer-events-auto';
+          inlineForm.className = 'absolute bottom-0 left-0 right-0 p-1.5 flex flex-col gap-0.5 overflow-hidden pointer-events-auto';
+          inlineForm.style.backgroundColor = 'rgba(15, 23, 42, 0.7)';
 
           const typeRow = document.createElement('div');
           typeRow.className = 'flex items-center gap-1';
@@ -1282,15 +1322,7 @@
           typeRow.appendChild(objBtn);
           typeRow.appendChild(textBtn);
 
-          let textInputHTML = '';
-          if (el.type === 'text') {
-            textInputHTML = `
-              <input type="text" class="inline-canvas-text w-full text-[10px] bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-slate-100 focus:border-indigo-500 outline-none" value="${el.text || ''}" placeholder="Literal content...">
-            `;
-          }
-
           inlineForm.innerHTML = `
-            ${textInputHTML}
             <textarea class="inline-canvas-desc w-full text-[10px] bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-slate-100 focus:border-indigo-500 outline-none resize-none leading-tight custom-scroll" placeholder="Desc..." rows="1">${el.desc || ''}</textarea>
           `;
 
@@ -1330,30 +1362,16 @@
           // Bind mouse event limits to ensure inline input typing doesn't drag the layout canvas elements
           const stopEvents = (ev) => { 
             ev.stopPropagation(); 
-            selectElement(el.id); // Direct select element on editing interaction focus
+            selectElement(el.id);
           };
           
-          const textIn = inlineForm.querySelector('.inline-canvas-text');
           const descIn = inlineForm.querySelector('.inline-canvas-desc');
-
-          if (textIn) {
-            textIn.addEventListener('mousedown', stopEvents);
-            textIn.addEventListener('keydown', stopEvents);
-            textIn.addEventListener('input', (e) => {
-              el.text = e.target.value;
-              // Sync directly to left properties card without reset focus
-              const sidebarInput = document.querySelector(`#form-${el.id} .text-val-input`);
-              if (sidebarInput) sidebarInput.value = el.text;
-              debouncedSave();
-            });
-          }
 
           if (descIn) {
             descIn.addEventListener('mousedown', stopEvents);
             descIn.addEventListener('keydown', stopEvents);
             descIn.addEventListener('input', (e) => {
               el.desc = e.target.value;
-              // Sync directly to properties details field without reset focus
               const sidebarDesc = document.querySelector(`#form-${el.id} .desc-val-input`);
               if (sidebarDesc) sidebarDesc.value = el.desc;
               debouncedSave();
@@ -1613,10 +1631,19 @@
         visualBox.style.left = `${el.x1 / 10}%`;
         visualBox.style.width = `${(el.x2 - el.x1) / 10}%`;
         visualBox.style.height = `${(el.y2 - el.y1) / 10}%`;
-        
-        const coordsDisp = visualBox.querySelector('.coords-display');
-        if (coordsDisp) {
-          coordsDisp.textContent = `[${el.y1}, ${el.x1}]`;
+
+        // live rescale text to match new box dimensions
+        if (el.type === 'text') {
+          const textEl = visualBox.querySelector('.inline-canvas-text');
+          if (textEl) {
+            const cw = DOM.canvasArea.clientWidth;
+            const ch = DOM.canvasArea.clientHeight;
+            const bW = cw * (el.x2 - el.x1) / 1000;
+            const bH = ch * (el.y2 - el.y1) / 1000;
+            const { size, scaleX, scaleY } = calcTextScale(el.text, bW, bH);
+            textEl.style.fontSize = size + 'px';
+            textEl.style.transform = `scale(${scaleX},${scaleY})`;
+          }
         }
       }
 
