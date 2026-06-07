@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ideogram4-PromptEditor</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Viewport lock */
+    body, html {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+    /* Premium dark blueprint layout pattern */
+    .blueprint-bg {
+      background-color: #020617; /* Slate-950 */
+      background-image: radial-gradient(#1e293b 1.5px, transparent 1.5px); /* Slate-800 */
+      background-size: 20px 20px;
+    }
+    /* Sleek scrollbar styling for sidebars */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #1e293b; /* Slate-800 */
+      border-radius: 3px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #334155; /* Slate-700 */
+    }
+    /* Professional multi-directional resize handles */
+    .resize-handle {
+      position: absolute;
+      z-index: 50;
+      pointer-events: auto;
+    }
+    .resize-handle-n  { cursor: ns-resize;    top: -4px;    left: 50%; transform: translateX(-50%); width: 24px; height: 8px; background: #6366f1; border-radius: 4px; }
+    .resize-handle-s  { cursor: ns-resize;    bottom: -4px; left: 50%; transform: translateX(-50%); width: 24px; height: 8px; background: #6366f1; border-radius: 4px; }
+    .resize-handle-e  { cursor: ew-resize;    right: -4px;  top: 50%;  transform: translateY(-50%); width: 8px;  height: 24px; background: #6366f1; border-radius: 4px; }
+    .resize-handle-w  { cursor: ew-resize;    left: -4px;   top: 50%;  transform: translateY(-50%); width: 8px;  height: 24px; background: #6366f1; border-radius: 4px; }
+    .resize-handle-nw { cursor: nwse-resize;  top: -5px;    left: -5px;  width: 10px; height: 10px; background: #6366f1; border-radius: 2px; }
+    .resize-handle-ne { cursor: nesw-resize;  top: -5px;    right: -5px; width: 10px; height: 10px; background: #6366f1; border-radius: 2px; }
+    .resize-handle-sw { cursor: nesw-resize;  bottom: -5px; left: -5px;  width: 10px; height: 10px; background: #6366f1; border-radius: 2px; }
+    .resize-handle-se { cursor: nwse-resize;  bottom: -5px; right: -5px; width: 10px; height: 10px; background: #6366f1; border-radius: 2px; }
+    /* Corner handle grab indicator */
+    .resize-handle-se::after {
+      content: ''; position: absolute; bottom: 1px; right: 1px;
+      width: 6px; height: 6px;
+      background: linear-gradient(135deg, transparent 40%, #fff 40%, #fff 55%, transparent 55%, transparent 70%, #fff 70%, #fff 80%, transparent 80%);
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col h-screen select-none">
+
+  <!-- Header Section -->
+  <header class="bg-slate-950 border-b border-slate-800 h-14 min-h-[56px] px-6 flex items-center justify-between z-30">
+    <div class="flex items-center gap-3">
+      <div class="p-1.5 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-600/20">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold text-white tracking-wide">Ideogram4-PromptEditor</h1>
+        <p class="text-[10px] text-slate-400">Strict JSON Prompt & Grid Modeler</p>
+      </div>
+    </div>
+
+    <!-- Undo & Redo Header Controls -->
+    <div class="flex items-center gap-4">
+      <div class="flex items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800 gap-0.5 shadow-inner">
+        <button id="undo-btn" class="p-1.5 rounded hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:hover:bg-transparent transition" title="Undo (Ctrl+Z)">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+        </button>
+        <button id="redo-btn" class="p-1.5 rounded hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:hover:bg-transparent transition" title="Redo (Ctrl+Y or Ctrl+Shift+Z)">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="h-4 w-[1px] bg-slate-800"></div>
+
+      <!-- Mode Selector -->
+      <!-- Aspect Ratio Selection & Custom Input -->
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Ratio:</span>
+        <select id="aspect-ratio-selector" class="bg-slate-900 border border-slate-800 text-slate-200 text-xs font-semibold rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+          <option value="16:9">16:9 (Landscape)</option>
+          <option value="9:16">9:16 (Portrait)</option>
+          <option value="1:1">1:1 (Square)</option>
+          <option value="4:5">4:5 (Standard Tall)</option>
+          <option value="3:4" selected>3:4 (Magazine)</option>
+          <option value="2:3">2:3 (Book Cover)</option>
+          <option value="21:9">21:9 (Cinema)</option>
+          <option value="custom">Custom...</option>
+        </select>
+
+        <!-- Custom Ratio Dimension Inputs -->
+        <div id="custom-ratio-container" class="hidden flex items-center gap-1 bg-slate-900 border border-slate-800 rounded px-2 py-0.5 shadow-inner">
+          <input type="number" id="custom-ratio-w" min="1" max="100" class="w-10 bg-transparent text-slate-200 text-xs font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="W" value="3">
+          <span class="text-slate-600 text-xs font-bold">:</span>
+          <input type="number" id="custom-ratio-h" min="1" max="100" class="w-10 bg-transparent text-slate-200 text-xs font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="H" value="4">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Three-Column Workspace -->
+  <main class="flex flex-1 w-full overflow-hidden bg-slate-950 h-[calc(100vh-56px)]">
+
+    <!-- LEFT COLUMN: Workspace Inputs & Layers -->
+    <section class="w-[360px] min-w-[360px] max-w-[360px] bg-slate-900 border-r border-slate-800 h-full flex flex-col z-20 shadow-sm">
+      
+      <!-- Interactive Tab Header buttons -->
+      <div class="flex border-b border-slate-800 bg-slate-950">
+        <button id="tab-global-btn" class="flex-1 py-3 text-xs font-bold border-b-2 border-indigo-600 text-indigo-400 bg-slate-900 transition flex items-center justify-center gap-2">
+          <span>🎨</span> Global & Styles
+        </button>
+        <button id="tab-layers-btn" class="flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-2">
+          <span>📂</span> Layers & Elements
+        </button>
+      </div>
+
+      <!-- Scrollable Tab panels -->
+      <div class="flex-1 overflow-y-auto p-4 custom-scroll space-y-4">
+        
+        <!-- Tab 1: Global Information -->
+        <div id="tab-global-panel" class="space-y-4">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">High Level Description</label>
+            <textarea id="hld-input" rows="3" class="w-full text-xs bg-slate-950 border border-slate-800 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition leading-relaxed placeholder-slate-600" placeholder="Summarize the core layout composition..."></textarea>
+          </div>
+
+          <!-- Extended Dynamic Styles inputs -->
+          <div id="extended-style-section" class="space-y-4 border-t border-slate-800 pt-4">
+            <h3 class="text-xs font-bold text-slate-300">Aesthetic Styling Config</h3>
+            
+            <!-- Fixed Style Description Fields matching V4 schema -->
+            <div id="style-fields-container" class="space-y-3">
+              <!-- Rendered dynamically by JS: aesthetics, lighting, photo, art_style, medium -->
+            </div>
+
+            <!-- Global color array swatches -->
+            <div class="border-t border-slate-800 pt-3 mt-4">
+              <label class="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Color Palette Setup (max 16)</label>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <div id="global-palette-container" class="flex flex-wrap gap-1.5"></div>
+                <button id="add-global-color-btn" class="w-6 h-6 rounded-full border border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center text-slate-400 hover:text-indigo-500 transition">+</button>
+                <input type="color" id="global-color-picker" class="color-picker-input">
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-800 pt-4">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Background Details</label>
+            <textarea id="background-input" rows="3" class="w-full text-xs bg-slate-950 border border-slate-800 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition leading-relaxed placeholder-slate-600" placeholder="Finished texture and details of background shell..."></textarea>
+          </div>
+        </div>
+
+        <!-- Tab 2: Elements Lists Panel -->
+        <div id="tab-layers-panel" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Render Hierarchy</span>
+            <button id="tab-add-element-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] px-2.5 py-1.5 rounded transition flex items-center gap-1">
+              <span>+</span> Add Box
+            </button>
+          </div>
+          <div id="elements-list" class="space-y-3">
+            <!-- Layers cards rendered via JS -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- CENTER COLUMN: Visual Canvas Board -->
+    <section class="flex-grow flex flex-col h-full blueprint-bg overflow-hidden relative">
+      
+      <!-- Top floating canvas navigation shortcuts -->
+      <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-slate-800 px-4 py-2 rounded-xl shadow-lg z-10 flex items-center gap-3">
+        <!-- Live Layout Preset Selector -->
+        <select id="preset-selector" class="bg-slate-950 border border-slate-800 text-indigo-400 text-[11px] font-bold rounded px-2.5 py-1 outline-none cursor-pointer focus:ring-1 focus:ring-indigo-500">
+          <option value="clean">🧹 Clean Canvas</option>
+          <option value="cinematic">🎬 Cinematic Landscape</option>
+          <option value="minimalist">◇ Minimalist Product</option>
+          <option value="fantasy">✨ Fantasy Dreamscape</option>
+          <option value="vintage">📜 Vintage Nostalgia</option>
+          <option value="tech">⚡ Cyber Tech</option>
+          <option value="nature">🌿 Natural Serenity</option>
+          <option value="editorial">📰 Bold Editorial</option>
+          <option value="portrait">👤 Portrait Studio</option>
+        </select>
+        
+        <span class="h-3 w-[1px] bg-slate-800"></span>
+
+        <button id="canvas-add-btn" class="text-xs font-bold text-slate-200 hover:text-white transition flex items-center gap-1.5">
+          <span class="text-sm">+</span> New Layer
+        </button>
+        <span class="h-3 w-[1px] bg-slate-800"></span>
+        <button id="canvas-deselect-btn" class="text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
+          Clear Selection
+        </button>
+        <span class="h-3 w-[1px] bg-slate-800"></span>
+        <button id="snap-toggle-btn" class="text-xs font-bold transition flex items-center gap-1.5 px-2 py-1 rounded" title="Toggle snap to grid">
+          <span class="text-sm">⊞</span> Snap
+        </button>
+        <span class="h-3 w-[1px] bg-slate-800"></span>
+        <div class="flex items-center gap-0.5">
+          <span class="text-[9px] font-bold text-slate-500 uppercase mr-1">Align</span>
+          <button id="align-left-btn" class="align-btn p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Align left">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h13"/></svg>
+          </button>
+          <button id="align-center-h-btn" class="align-btn p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Center horizontally">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M8 12h8M4 18h16"/></svg>
+          </button>
+          <button id="align-right-btn" class="align-btn p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Align right">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M10 12h10M7 18h13"/></svg>
+          </button>
+          <span class="h-3 w-[1px] bg-slate-700"></span>
+          <button id="align-top-btn" class="align-btn p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Align top">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 9h10M6 14h7"/></svg>
+          </button>
+          <button id="align-center-v-btn" class="align-btn p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Center vertically">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 4h12M6 12h10M6 20h12"/></svg>
+          </button>
+          <button id="align-bottom-btn" class="align-btn p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Align bottom">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 8h7M6 14h10M6 20h12"/></svg>
+          </button>
+          <input id="align-offset-input" type="number" min="0" max="500" value="0" class="w-12 text-[10px] bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-slate-300 focus:border-indigo-500 outline-none text-center font-mono" title="Offset from canvas edge">
+        </div>
+      </div>
+
+      <!-- Scaled Workspace Draft Board -->
+      <div id="canvas-wrapper" class="w-full h-full flex flex-col items-center justify-center p-16 overflow-hidden">
+        <div id="canvas-area" class="canvas-container bg-slate-900 shadow-2xl relative border border-slate-800 rounded-lg">
+          <svg id="snap-overlay" class="absolute inset-0 pointer-events-none z-30" viewBox="0 0 1000 1000" style="width:100%;height:100%"></svg>
+        </div>
+        <!-- Real-time dynamic scale monitor -->
+        <div id="canvas-resolution" class="text-[10px] text-slate-500 font-mono mt-3 select-none">0 × 0px</div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: Output Generator -->
+    <section class="w-[340px] min-w-[340px] max-w-[340px] bg-slate-900 border-l border-slate-800 h-full flex flex-col z-20 shadow-sm">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Generation Code</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-[10px] text-slate-400 flex items-center gap-1 cursor-pointer select-none">
+            <input type="checkbox" id="minify-toggle" checked class="rounded border-slate-800 text-indigo-600 focus:ring-indigo-500 bg-slate-900">
+            Minify
+          </label>
+        </div>
+      </div>
+
+      <div class="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
+        <textarea id="json-output" readonly class="flex-1 w-full text-[11px] font-mono bg-slate-950 text-emerald-400 border border-slate-850 rounded-xl p-4 focus:outline-none resize-none leading-relaxed custom-scroll" placeholder="Building strict JSON output..."></textarea>
+        
+        <button id="copy-btn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-950 transition flex items-center justify-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          Copy Code Configuration
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Interactive JavaScript Controller -->
+  <script>
+    const state = {
+
+      aspectRatio: '3:4',
+      activeTab: 'global', // 'global' or 'layers'
+      highLevelDescription: '',
+      styleDescription: {
+        fields: [
+          {id: 'aesthetics', label: 'Aesthetics', value: ''},
+          {id: 'lighting', label: 'Lighting', value: ''},
+          {id: 'photo', label: 'Photo Style', value: ''},
+          {id: 'art_style', label: 'Art Style', value: ''},
+          {id: 'medium', label: 'Medium', value: ''},
+        ],
+        color_palette: []
+      },
+      background: '',
+      elements: [],
+      selectedId: null
+    };
+
+    // --- SNAPPING SYSTEM ---
+    const SNAP_THRESHOLD = 15;
+    let snapEnabled = true;
+    let snapLines = [];
+
+    function getSnapCandidates(excludeId) {
+      const xCands = new Set([0, 500, 1000]);
+      const yCands = new Set([0, 500, 1000]);
+      state.elements.forEach(el => {
+        if (el.id === excludeId) return;
+        xCands.add(el.x1);
+        xCands.add(el.x2);
+        xCands.add(Math.round((el.x1 + el.x2) / 2));
+        yCands.add(el.y1);
+        yCands.add(el.y2);
+        yCands.add(Math.round((el.y1 + el.y2) / 2));
+      });
+      return { x: xCands, y: yCands };
+    }
+
+    function snapEdgesOnAxis(positions, candidates, axis, threshold) {
+      let bestOffset = 0;
+      let bestDist = threshold;
+      let snappedTo = null;
+
+      for (const pos of positions) {
+        for (const cand of candidates) {
+          const dist = Math.abs(pos - cand);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestOffset = cand - pos;
+            snappedTo = cand;
+          }
+        }
+      }
+
+      if (bestOffset !== 0 && snappedTo !== null && snappedTo !== 0 && snappedTo !== 1000) {
+        const exists = snapLines.some(l => l.axis === axis && l.value === snappedTo);
+        if (!exists) {
+          snapLines.push({ axis, value: snappedTo });
+        }
+      }
+
+      return bestOffset;
+    }
+
+    function applyDragSnap(activeId, x1, y1, x2, y2) {
+      if (!snapEnabled) return { x1, y1, x2, y2 };
+
+      snapLines = [];
+      const candidates = getSnapCandidates(activeId);
+      const cx = Math.round((x1 + x2) / 2);
+      const cy = Math.round((y1 + y2) / 2);
+
+      const dx = snapEdgesOnAxis([x1, x2, cx], candidates.x, 'x', SNAP_THRESHOLD);
+      const dy = snapEdgesOnAxis([y1, y2, cy], candidates.y, 'y', SNAP_THRESHOLD);
+
+      return { x1: x1 + dx, y1: y1 + dy, x2: x2 + dx, y2: y2 + dy };
+    }
+
+    function applyResizeSnap(activeId, x1, y1, x2, y2, dir) {
+      if (!snapEnabled) return { x1, y1, x2, y2 };
+
+      snapLines = [];
+      const candidates = getSnapCandidates(activeId);
+
+      let dx = 0;
+      let dy = 0;
+
+      if (dir.includes('e') || dir.includes('w')) {
+        const xPositions = [];
+        if (dir.includes('e')) xPositions.push(x2);
+        if (dir.includes('w')) xPositions.push(x1);
+        dx = snapEdgesOnAxis(xPositions, candidates.x, 'x', SNAP_THRESHOLD);
+      }
+      if (dir.includes('n') || dir.includes('s')) {
+        const yPositions = [];
+        if (dir.includes('s')) yPositions.push(y2);
+        if (dir.includes('n')) yPositions.push(y1);
+        dy = snapEdgesOnAxis(yPositions, candidates.y, 'y', SNAP_THRESHOLD);
+      }
+
+      if (dir.includes('e')) x2 += dx;
+      if (dir.includes('w')) x1 += dx;
+      if (dir.includes('s')) y2 += dy;
+      if (dir.includes('n')) y1 += dy;
+
+      return { x1, y1, x2, y2 };
+    }
+
+    function applyDrawSnap(activeId, x1, y1, x2, y2) {
+      if (!snapEnabled) return { x1, y1, x2, y2 };
+
+      snapLines = [];
+      const candidates = getSnapCandidates(activeId);
+
+      const dx1 = snapEdgesOnAxis([x1], candidates.x, 'x', SNAP_THRESHOLD);
+      const dy1 = snapEdgesOnAxis([y1], candidates.y, 'y', SNAP_THRESHOLD);
+      const dx2 = snapEdgesOnAxis([x2], candidates.x, 'x', SNAP_THRESHOLD);
+      const dy2 = snapEdgesOnAxis([y2], candidates.y, 'y', SNAP_THRESHOLD);
+
+      x1 += dx1;
+      y1 += dy1;
+      x2 += dx2;
+      y2 += dy2;
+
+      if (x1 > x2) { const t = x1; x1 = x2; x2 = t; }
+      if (y1 > y2) { const t = y1; y1 = y2; y2 = t; }
+
+      return { x1, y1, x2, y2 };
+    }
+
+    function renderSnapLines() {
+      const svg = document.getElementById('snap-overlay');
+      if (!svg) return;
+      svg.innerHTML = '';
+      snapLines.forEach(line => {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        if (line.axis === 'x') {
+          el.setAttribute('x1', line.value);
+          el.setAttribute('y1', '0');
+          el.setAttribute('x2', line.value);
+          el.setAttribute('y2', '1000');
+        } else {
+          el.setAttribute('x1', '0');
+          el.setAttribute('y1', line.value);
+          el.setAttribute('x2', '1000');
+          el.setAttribute('y2', line.value);
+        }
+        el.setAttribute('stroke', '#6366f1');
+        el.setAttribute('stroke-width', '1');
+        el.setAttribute('stroke-dasharray', '4 3');
+        el.setAttribute('opacity', '0.8');
+        svg.appendChild(el);
+      });
+    }
+
+    function clearSnapLines() {
+      snapLines = [];
+      const svg = document.getElementById('snap-overlay');
+      if (svg) svg.innerHTML = '';
+    }
+
+    function alignElement(dir) {
+      const el = state.elements.find(item => item.id === state.selectedId);
+      if (!el) return;
+
+      const width = el.x2 - el.x1;
+      const height = el.y2 - el.y1;
+      const offset = Math.max(0, Math.min(500, parseInt(DOM.alignOffsetInput.value, 10) || 0));
+
+      switch (dir) {
+        case 'left':
+          el.x1 = offset; el.x2 = offset + width; break;
+        case 'center-h':
+          el.x1 = Math.round((1000 - width) / 2); el.x2 = el.x1 + width; break;
+        case 'right':
+          el.x1 = 1000 - offset - width; el.x2 = 1000 - offset; break;
+        case 'top':
+          el.y1 = offset; el.y2 = offset + height; break;
+        case 'center-v':
+          el.y1 = Math.round((1000 - height) / 2); el.y2 = el.y1 + height; break;
+        case 'bottom':
+          el.y1 = 1000 - offset - height; el.y2 = 1000 - offset; break;
+      }
+
+      renderAll(true);
+    }
+
+    // Global DOM Namespace Reference Cache to prevent redundant execution bugs
+    const DOM = {};
+
+    // --- UNDO / REDO HISTORY CONTROLLER ---
+    const history = {
+      stack: [],
+      index: -1,
+      save() {
+        if (this.index < this.stack.length - 1) {
+          this.stack = this.stack.slice(0, this.index + 1);
+        }
+        const copy = JSON.parse(JSON.stringify({
+          aspectRatio: state.aspectRatio,
+          activeTab: state.activeTab,
+          highLevelDescription: state.highLevelDescription,
+          styleDescription: state.styleDescription,
+          background: state.background,
+          elements: state.elements,
+          selectedId: state.selectedId
+        }));
+        this.stack.push(copy);
+        this.index++;
+        this.updateButtons();
+      },
+      undo() {
+        if (this.index > 0) {
+          this.index--;
+          this.restore();
+        }
+      },
+      redo() {
+        if (this.index < this.stack.length - 1) {
+          this.index++;
+          this.restore();
+        }
+      },
+      restore() {
+        const snap = this.stack[this.index];
+        state.aspectRatio = snap.aspectRatio;
+        state.activeTab = snap.activeTab;
+        state.highLevelDescription = snap.highLevelDescription;
+        state.styleDescription = JSON.parse(JSON.stringify(snap.styleDescription));
+        state.background = snap.background;
+        state.elements = JSON.parse(JSON.stringify(snap.elements));
+        state.selectedId = snap.selectedId;
+
+        // Restore dynamic inputs inside panels using verified DOM namespace
+        DOM.hldInput.value = state.highLevelDescription;
+        DOM.backgroundInput.value = state.background;
+        // Sync aspect ratio layout view elements cleanly
+        syncAspectUI();
+
+        syncActiveTab(false);
+        resizeCanvas();
+        renderAll(false);
+        this.updateButtons();
+      },
+      updateButtons() {
+        DOM.undoBtn.disabled = this.index <= 0;
+        DOM.redoBtn.disabled = this.index >= this.stack.length - 1;
+      }
+    };
+
+    let debounceTimer = null;
+    function debouncedSave() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        history.save();
+        generateJSON();
+      }, 350);
+    }
+
+    function generateId() {
+      return 'el_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Dynamic ID parser converting element hooks into camelCase DOM Registry
+    document.addEventListener("DOMContentLoaded", () => {
+      const elementsToCache = [
+        'aspect-ratio-selector', 'canvas-wrapper', 'canvas-area', 
+        'elements-list', 'tab-add-element-btn', 'canvas-add-btn', 'canvas-deselect-btn', 
+        'hld-input', 'background-input', 'json-output', 'copy-btn', 'minify-toggle', 
+        'preset-selector', 'tab-global-btn', 'tab-layers-btn', 'tab-global-panel', 
+        'tab-layers-panel', 'extended-style-section', 'style-fields-container',
+        'global-palette-container', 'global-color-picker', 'add-global-color-btn', 'undo-btn', 'redo-btn', 'canvas-resolution',
+        'custom-ratio-container', 'custom-ratio-w', 'custom-ratio-h',
+        'snap-toggle-btn',
+        'align-left-btn', 'align-center-h-btn', 'align-right-btn',
+        'align-top-btn', 'align-center-v-btn', 'align-bottom-btn',
+        'align-offset-input'
+      ];
+      
+      elementsToCache.forEach(id => {
+        const camelCase = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+        DOM[camelCase] = document.getElementById(id);
+      });
+
+      init();
+    });
+
+    function toggleSnap() {
+      snapEnabled = !snapEnabled;
+      DOM.snapToggleBtn.classList.toggle('text-indigo-400', snapEnabled);
+      DOM.snapToggleBtn.classList.toggle('text-slate-500', !snapEnabled);
+      DOM.snapToggleBtn.classList.toggle('bg-indigo-600/20', snapEnabled);
+      DOM.snapToggleBtn.classList.toggle('border', snapEnabled);
+      DOM.snapToggleBtn.classList.toggle('border-indigo-800', snapEnabled);
+      if (!snapEnabled) clearSnapLines();
+    }
+
+    function init() {
+      DOM.hldInput.value = state.highLevelDescription;
+      DOM.backgroundInput.value = state.background;
+
+      // Initial snap button state
+      DOM.snapToggleBtn.className = 'text-xs font-bold flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-600/20 text-indigo-400 border border-indigo-800 transition';
+
+      // Tab Selection Event Listeners
+      DOM.tabGlobalBtn.addEventListener('click', () => { state.activeTab = 'global'; syncActiveTab(); });
+      DOM.tabLayersBtn.addEventListener('click', () => { state.activeTab = 'layers'; syncActiveTab(); });
+
+      DOM.aspectRatioSelector.addEventListener('change', handleAspectChange);
+      DOM.minifyToggle.addEventListener('change', generateJSON);
+      DOM.copyBtn.addEventListener('click', handleCopyJSON);
+
+      // Custom Aspect inputs event listeners
+      DOM.customRatioW.addEventListener('input', handleCustomRatioChange);
+      DOM.customRatioH.addEventListener('input', handleCustomRatioChange);
+
+      // Double Hookups on Box additions
+      DOM.tabAddElementBtn.addEventListener('click', handleAddElement);
+      DOM.canvasAddBtn.addEventListener('click', handleAddElement);
+      DOM.canvasDeselectBtn.addEventListener('click', () => { state.selectedId = null; renderAll(true); });
+      DOM.presetSelector.addEventListener('change', handlePresetLoad);
+      DOM.snapToggleBtn.addEventListener('click', toggleSnap);
+
+      DOM.alignLeftBtn.addEventListener('click', () => alignElement('left'));
+      DOM.alignCenterHBtn.addEventListener('click', () => alignElement('center-h'));
+      DOM.alignRightBtn.addEventListener('click', () => alignElement('right'));
+      DOM.alignTopBtn.addEventListener('click', () => alignElement('top'));
+      DOM.alignCenterVBtn.addEventListener('click', () => alignElement('center-v'));
+      DOM.alignBottomBtn.addEventListener('click', () => alignElement('bottom'));
+
+      DOM.hldInput.addEventListener('input', () => { state.highLevelDescription = DOM.hldInput.value; debouncedSave(); });
+      DOM.backgroundInput.addEventListener('input', () => { state.background = DOM.backgroundInput.value; debouncedSave(); });
+
+      DOM.addGlobalColorBtn.addEventListener('click', () => DOM.globalColorPicker.click());
+      DOM.globalColorPicker.addEventListener('change', (e) => {
+        if (state.styleDescription.color_palette.length < 16) {
+          state.styleDescription.color_palette.push(e.target.value);
+        }
+        renderAll(true);
+      });
+
+      DOM.canvasArea.addEventListener('mousedown', handleCanvasMouseDown);
+      let resizeTimer;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(resizeCanvas, 100);
+      });
+      document.addEventListener('keydown', handleGlobalKeydown);
+
+      DOM.undoBtn.addEventListener('click', () => history.undo());
+      DOM.redoBtn.addEventListener('click', () => history.redo());
+
+      history.save();
+      syncAspectUI();
+      resizeCanvas();
+      renderAll(false);
+    }
+
+    // Interactive Tab Controller logic
+    function syncActiveTab(saveHistory = true) {
+      if (state.activeTab === 'global') {
+        DOM.tabGlobalPanel.classList.remove('hidden');
+        DOM.tabLayersPanel.classList.add('hidden');
+        DOM.tabGlobalBtn.className = 'flex-1 py-3 text-xs font-bold border-b-2 border-indigo-600 text-indigo-400 bg-slate-900 transition flex items-center justify-center gap-2';
+        DOM.tabLayersBtn.className = 'flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-2';
+      } else {
+        DOM.tabLayersPanel.classList.remove('hidden');
+        DOM.tabGlobalPanel.classList.add('hidden');
+        DOM.tabLayersBtn.className = 'flex-1 py-3 text-xs font-bold border-b-2 border-indigo-600 text-indigo-400 bg-slate-900 transition flex items-center justify-center gap-2';
+        DOM.tabGlobalBtn.className = 'flex-1 py-3 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-2';
+      }
+      if (saveHistory) {
+        history.save();
+      }
+    }
+
+    // Aspect scaling calculations for the Draft Board
+    function resizeCanvas() {
+      const rect = DOM.canvasWrapper.getBoundingClientRect();
+      const padding = 32; 
+      const maxW = rect.width - padding * 2;
+      const maxH = rect.height - padding * 4; // Bounded for bottom info tag
+
+      const [aspectW, aspectH] = state.aspectRatio.split(':').map(Number);
+      const ratio = aspectW / aspectH;
+
+      let w, h;
+      if (maxW / maxH > ratio) {
+        h = maxH;
+        w = maxH * ratio;
+      } else {
+        w = maxW;
+        h = maxW / ratio;
+      }
+
+      DOM.canvasArea.style.width = `${w}px`;
+      DOM.canvasArea.style.height = `${h}px`;
+
+      // Render physical resolution specs inside view
+      if (DOM.canvasResolution) {
+        DOM.canvasResolution.textContent = `${Math.round(w)} × ${Math.round(h)}px  (${state.aspectRatio})`;
+      }
+    }
+
+    // Aspect Ratio UI synchronization manager
+    function syncAspectUI() {
+      const standardRatios = ['16:9', '9:16', '1:1', '4:5', '3:4', '2:3', '21:9'];
+      if (standardRatios.includes(state.aspectRatio)) {
+        DOM.aspectRatioSelector.value = state.aspectRatio;
+        DOM.customRatioContainer.classList.add('hidden');
+      } else {
+        DOM.aspectRatioSelector.value = 'custom';
+        DOM.customRatioContainer.classList.remove('hidden');
+        const [w, h] = state.aspectRatio.split(':');
+        DOM.customRatioW.value = w || '3';
+        DOM.customRatioH.value = h || '4';
+      }
+    }
+
+    // Prompt Preset Engine — sets high-level description & background as actual prompts
+    function handlePresetLoad(e) {
+      const selection = e.target.value;
+      if (!selection) return;
+
+      const prompts = {
+        clean: {
+          highLevelDescription: '',
+          background: '',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: ''},
+              {id: 'lighting', label: 'Lighting', value: ''},
+              {id: 'photo', label: 'Photo Style', value: ''},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: ''},
+            ],
+            color_palette: []
+          },
+          elements: []
+        },
+        cinematic: {
+          aspectRatio: '21:9',
+          highLevelDescription: 'A dramatic cinematic landscape at golden hour with sweeping mountain silhouettes, moody cloud formations, and warm sunlight piercing through the mist. A lone figure stands on a ridge overlooking a vast valley.',
+          background: 'A deep atmospheric gradient from warm amber at the horizon to rich purple-blue at the top, with volumetric god rays and soft haze layers creating depth.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Epic cinematic realism with filmic color grading and dramatic contrast.'},
+              {id: 'lighting', label: 'Lighting', value: 'Warm golden hour backlight with volumetric rays and deep shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'Shot on medium format film with subtle grain and shallow depth of field.'},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: 'Cinematic photography'},
+            ],
+            color_palette: ["#E8923A", "#1A1A2E", "#D4A373", "#2D2D44"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Expansive sky and cloud formation spanning the full width, occupying the upper two thirds of the frame.', y1: 0, x1: 0, y2: 650, x2: 1000, color_palette: ["#E8923A", "#1A1A2E"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Distant mountain range silhouette stretching across the horizon line.', y1: 600, x1: 0, y2: 750, x2: 1000, color_palette: ["#2D2D44"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'A lone figure standing on a rocky ridge in the foreground, silhouetted against the bright sky.', y1: 550, x1: 420, y2: 750, x2: 500, color_palette: ["#1A1A2E"] }
+          ]
+        },
+        minimalist: {
+          aspectRatio: '4:5',
+          highLevelDescription: 'A clean minimalist product showcase featuring a single premium object centered in abundant negative space. Soft natural lighting from the side creates gentle shadow gradients across a smooth matte surface.',
+          background: 'A seamless gradient from warm off-white to pale stone gray, with a barely visible subtle shadow cast on the surface beneath the product.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Pure minimalism with precise geometric harmony and restraint.'},
+              {id: 'lighting', label: 'Lighting', value: 'Soft north-facing window light with diffused highlights.'},
+              {id: 'photo', label: 'Photo Style', value: 'Clean commercial product photography, no grain, maximum clarity.'},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: 'Product photography'},
+            ],
+            color_palette: ["#F5F5F0", "#E8E4DF", "#C4C0BA", "#2C2C2C"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Centered premium object — a sleek minimalist bottle or sculptural form on display.', y1: 300, x1: 350, y2: 700, x2: 650, color_palette: ["#2C2C2C"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Soft cast shadow beneath the product, stretching slightly to the lower right.', y1: 700, x1: 330, y2: 730, x2: 700, color_palette: ["#C4C0BA"] },
+            { id: generateId(), type: 'text', text: 'ESSENTIAL', desc: 'Minimal sans-serif title in thin weight, positioned in the upper portion.', y1: 120, x1: 200, y2: 200, x2: 800, color_palette: ["#2C2C2C"] }
+          ]
+        },
+        fantasy: {
+          aspectRatio: '16:9',
+          highLevelDescription: 'An ethereal fantasy world floating among the stars — a luminous crystal island hovers above glowing cosmic clouds. Bioluminescent flora and ancient stone ruins emit a soft magical glow, with twin moons illuminating the scene from above.',
+          background: 'A deep cosmic void transitioning from midnight purple to star-scattered navy, with swirling nebula clouds in magenta and teal, dotted with glowing celestial dust.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Magical surrealism with glowing ethereal elements and rich fantasy detail.'},
+              {id: 'lighting', label: 'Lighting', value: 'Bioluminescent glow from below combined with soft moonlight from above.'},
+              {id: 'photo', label: 'Photo Style', value: 'Dreamlike digital painting with soft atmospheric bloom.'},
+              {id: 'art_style', label: 'Art Style', value: 'Inspired by concept art and magical realism.'},
+              {id: 'medium', label: 'Medium', value: 'Digital fantasy illustration'},
+            ],
+            color_palette: ["#6B21A8", "#EC4899", "#06B6D4", "#FDE68A", "#1E1B4B"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Luminous floating crystal island at the center, glowing with bioluminescent flora.', y1: 250, x1: 250, y2: 650, x2: 750, color_palette: ["#6B21A8", "#EC4899"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Swirling cosmic clouds and nebula trails beneath the island.', y1: 650, x1: 100, y2: 900, x2: 900, color_palette: ["#06B6D4", "#EC4899"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Ancient stone ruins with glowing runes on the island surface.', y1: 350, x1: 350, y2: 550, x2: 500, color_palette: ["#FDE68A"] },
+            { id: generateId(), type: 'text', text: 'AETHER', desc: 'Ethereal glowing display type overlay in the upper sky area.', y1: 80, x1: 300, y2: 180, x2: 700, color_palette: ["#FDE68A"] }
+          ]
+        },
+        vintage: {
+          aspectRatio: '3:4',
+          highLevelDescription: 'A nostalgic vintage composition reminiscent of 1970s editorial photography. Warm amber tones dominate a cozy interior scene with mid-century furniture, a steaming teacup, and soft window light filtering through sheer curtains.',
+          background: 'An aged cream paper texture with subtle grain, warm amber vignette fading to dark at the edges, and faint organic tea-stain discolorations.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Warm retro nostalgia with film-era color science and organic imperfections.'},
+              {id: 'lighting', label: 'Lighting', value: 'Soft warm window light with deep amber shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'Shot on expired Kodak Portra with pronounced grain and light leaks.'},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: 'Analog film photography'},
+            ],
+            color_palette: ["#D4A373", "#8B5E3C", "#F5E6D0", "#3D2B1F", "#A0522D"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Window on the left side with sheer curtains filtering warm sunlight.', y1: 50, x1: 20, y2: 550, x2: 350, color_palette: ["#F5E6D0", "#D4A373"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Mid-century wooden table with a steaming teacup, positioned in the lower center-right.', y1: 550, x1: 350, y2: 800, x2: 750, color_palette: ["#8B5E3C", "#3D2B1F"] },
+            { id: generateId(), type: 'text', text: 'GOLDEN HOUR', desc: 'Vintage-style serif typography overlaid in the upper right, warm amber tone.', y1: 150, x1: 400, y2: 250, x2: 900, color_palette: ["#8B5E3C"] }
+          ]
+        },
+        tech: {
+          aspectRatio: '16:9',
+          highLevelDescription: 'A futuristic cyberpunk cityscape viewed from a high-rise balcony at night. holographic billboards cast neon light across rain-slicked streets below, while orbiting drones trace light trails between gleaming skyscrapers.',
+          background: 'A dark steel-blue gradient with sharp diagonal circuit-board patterns in faint cyan, overlaid with grid lines and subtle holographic grid distortion effects.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Cyberpunk futuristic with neon accents and sleek tech textures.'},
+              {id: 'lighting', label: 'Lighting', value: 'Dramatic neon signage lighting with deep blue/purple shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'Crisp digital rendering with chromatic aberration and lens flares.'},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: 'Digital concept art'},
+            ],
+            color_palette: ["#06B6D4", "#EC4899", "#0F172A", "#22D3EE", "#A855F7"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Gleaming skyscraper skyline silhouetted against the neon sky, spanning the background.', y1: 100, x1: 50, y2: 600, x2: 950, color_palette: ["#0F172A", "#06B6D4"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Large holographic billboard on a nearby building emitting magenta and cyan light.', y1: 250, x1: 600, y2: 500, x2: 850, color_palette: ["#EC4899", "#22D3EE"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Balcony railing and foreground silhouette framing the lower edge.', y1: 700, x1: 0, y2: 1000, x2: 1000, color_palette: ["#0F172A"] },
+            { id: generateId(), type: 'text', text: 'NEON CITY', desc: 'Glowing futuristic display type with neon cyan fill, positioned across the upper area.', y1: 30, x1: 250, y2: 120, x2: 750, color_palette: ["#22D3EE"] }
+          ]
+        },
+        nature: {
+          aspectRatio: '4:3',
+          highLevelDescription: 'A serene forest stream meandering through ancient moss-covered trees. Dappled sunlight filters through a lush green canopy, illuminating clusters of wildflowers along the water bank. A gentle waterfall in the distance adds a sense of peaceful motion.',
+          background: 'A soft organic gradient of earthy greens and warm browns, with subtle organic leaf-like texture and gentle light dapples scattered across the frame.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Natural organic beauty with rich botanical detail and peaceful atmosphere.'},
+              {id: 'lighting', label: 'Lighting', value: 'Soft dappled forest lighting filtering through a canopy.'},
+              {id: 'photo', label: 'Photo Style', value: 'National Geographic documentary style with vibrant natural colors.'},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: 'Nature photography'},
+            ],
+            color_palette: ["#2D5A27", "#8CB369", "#4A7C3F", "#D4C9A8", "#5C4033"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Lush green forest canopy with moss-covered branches framing the top.', y1: 0, x1: 0, y2: 300, x2: 1000, color_palette: ["#2D5A27", "#4A7C3F"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Meandering stream with rippling water, winding from the midground to the foreground.', y1: 400, x1: 200, y2: 850, x2: 800, color_palette: ["#8CB369", "#4A7C3F"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Clusters of wildflowers along the stream bank in the foreground.', y1: 700, x1: 50, y2: 900, x2: 300, color_palette: ["#D4C9A8", "#8CB369"] },
+            { id: generateId(), type: 'text', text: 'SERENITY', desc: 'Elegant nature-style typography in the upper right, warm earth tone.', y1: 120, x1: 550, y2: 200, x2: 900, color_palette: ["#D4C9A8"] }
+          ]
+        },
+        editorial: {
+          aspectRatio: '2:3',
+          highLevelDescription: 'A bold fashion editorial shot featuring an avant-garde silhouette against a stark monochromatic backdrop. Dramatic side lighting carves sharp geometric shadows across the frame, while a single vibrant accessory provides the focal point.',
+          background: 'A clean bleached-white studio backdrop with subtle architectural shadow lines cast diagonally, transitioning to deep black at the lower edge for dramatic contrast.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'High-fashion editorial with striking contrast and sculptural composition.'},
+              {id: 'lighting', label: 'Lighting', value: 'Single hard light source from the side creating deep dramatic shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'High-end fashion magazine editorial with razor-sharp detail.'},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: 'Editorial fashion photography'},
+            ],
+            color_palette: ["#FFFFFF", "#000000", "#DC2626", "#E5E7EB", "#6B7280"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Avant-garde figure silhouette in a bold fashion pose, center frame.', y1: 150, x1: 300, y2: 800, x2: 650, color_palette: ["#000000"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Dramatic diagonal shadow cast across the backdrop from the side light.', y1: 200, x1: 600, y2: 700, x2: 1000, color_palette: ["#6B7280"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Vibrant red accessory — a bold clutch or sculptural piece held at the side.', y1: 500, x1: 500, y2: 600, x2: 580, color_palette: ["#DC2626"] },
+            { id: generateId(), type: 'text', text: 'AVANT-GARDE', desc: 'Bold editorial headline in heavy sans-serif, positioned across the lower third.', y1: 820, x1: 100, y2: 920, x2: 900, color_palette: ["#000000"] }
+          ]
+        },
+        portrait: {
+          aspectRatio: '3:4',
+          highLevelDescription: 'A professional studio portrait with Rembrandt lighting — soft wraparound illumination sculpts the subject features against a textured backdrop. The subject wears neutral earth-tone clothing with a relaxed, confident expression.',
+          background: 'A seamless gradient from warm charcoal gray at the top to a slightly lighter stone tone at the bottom, with a subtle textured muslin backdrop effect.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Classic studio portraiture with timeless elegance and refined polish.'},
+              {id: 'lighting', label: 'Lighting', value: 'Rembrandt triangle lighting with a large octabox key light and subtle rim.'},
+              {id: 'photo', label: 'Photo Style', value: 'Professional headshot photography with flawless skin rendering.'},
+              {id: 'art_style', label: 'Art Style', value: ''},
+              {id: 'medium', label: 'Medium', value: 'Studio portrait photography'},
+            ],
+            color_palette: ["#8B7355", "#D4C5A9", "#4A4A4A", "#F5F1EB", "#2C2C2C"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Subject head and shoulders positioned in the center, with Rembrandt lighting on the face.', y1: 150, x1: 300, y2: 650, x2: 700, color_palette: ["#D4C5A9", "#4A4A4A"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Neutral earth-tone clothing on the subject lower body, falling into the bottom.', y1: 650, x1: 300, y2: 900, x2: 700, color_palette: ["#8B7355"] },
+            { id: generateId(), type: 'text', text: 'PORTRAIT', desc: 'Refined serif typography in the upper left area, subtle warm tone.', y1: 60, x1: 80, y2: 120, x2: 350, color_palette: ["#8B7355"] }
+          ]
+        }
+      };
+
+      const preset = prompts[selection];
+      if (!preset) return;
+
+      state.styleDescription = JSON.parse(JSON.stringify(preset.styleDescription));
+      state.elements = preset.elements.map(el => ({ ...el, id: generateId() }));
+      state.selectedId = null;
+
+      if (selection === 'clean') {
+        state.highLevelDescription = '';
+        state.background = '';
+      } else {
+        state.highLevelDescription = preset.highLevelDescription;
+        state.background = preset.background;
+        if (preset.aspectRatio) state.aspectRatio = preset.aspectRatio;
+      }
+
+      // Sync views
+      DOM.hldInput.value = state.highLevelDescription;
+      DOM.backgroundInput.value = state.background;
+
+      syncAspectUI();
+      resizeCanvas();
+      renderAll(true);
+
+      // Reset selection state indicator
+      DOM.presetSelector.value = "clean";
+    }
+
+    // Global Key Listener mapping (Delete / Backspace / CtrlZ / CtrlY / CtrlShiftZ)
+    function handleGlobalKeydown(e) {
+      const isZ = e.key.toLowerCase() === 'z';
+      const isY = e.key.toLowerCase() === 'y';
+      const isDelete = e.key === 'Delete' || e.key === 'Backspace';
+      const hasMetaOrCtrl = e.ctrlKey || e.metaKey;
+
+      // Don't intercept delete actions if currently focusing on input tags
+      const activeTag = document.activeElement.tagName;
+      const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || document.activeElement.isContentEditable;
+
+      if (isTyping) {
+        return; // Allow native text operations to execute
+      }
+
+      if (isDelete && state.selectedId) {
+        e.preventDefault();
+        state.elements = state.elements.filter(item => item.id !== state.selectedId);
+        state.selectedId = null;
+        renderAll(true);
+      } else if (hasMetaOrCtrl && isZ) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          history.redo();
+        } else {
+          history.undo();
+        }
+      } else if (hasMetaOrCtrl && isY) {
+        e.preventDefault();
+        history.redo();
+      }
+    }
+
+    // Toggle Custom inputs visibility depending on selector state
+    function handleAspectChange(e) {
+      const val = e.target.value;
+      if (val === 'custom') {
+        DOM.customRatioContainer.classList.remove('hidden');
+        const w = DOM.customRatioW.value || '3';
+        const h = DOM.customRatioH.value || '4';
+        state.aspectRatio = `${w}:${h}`;
+      } else {
+        DOM.customRatioContainer.classList.add('hidden');
+        state.aspectRatio = val;
+      }
+      resizeCanvas();
+      history.save();
+      generateJSON();
+    }
+
+    // Clamps, scales, and live-redraws custom numeric ratios on input typing
+    function handleCustomRatioChange() {
+      let w = parseInt(DOM.customRatioW.value) || 1;
+      let h = parseInt(DOM.customRatioH.value) || 1;
+      
+      if (w < 1) w = 1;
+      if (h < 1) h = 1;
+      DOM.customRatioW.value = w;
+      DOM.customRatioH.value = h;
+
+      state.aspectRatio = `${w}:${h}`;
+      resizeCanvas();
+      debouncedSave(); // Use debounce to cleanly avoid history stacking while typing numbers
+    }
+
+    function handleAddElement() {
+      const newEl = {
+        id: generateId(),
+        type: 'obj',
+        text: '',
+        desc: 'New customized layout element description',
+        y1: 300, x1: 300, y2: 600, x2: 600,
+        color_palette: []
+      };
+      state.elements.push(newEl);
+      state.selectedId = newEl.id;
+      
+      state.activeTab = 'layers';
+      syncActiveTab(false);
+      renderAll(true);
+    }
+
+    function renderAll(saveHistoryState = true) {
+      if (saveHistoryState) {
+        history.save();
+      }
+      renderGlobalPalette();
+      renderStyleFields();
+      renderFormElements();
+      renderCanvasBoxes();
+      generateJSON();
+    }
+
+    function renderGlobalPalette() {
+      DOM.globalPaletteContainer.innerHTML = '';
+      state.styleDescription.color_palette.forEach((color, idx) => {
+        const swatch = document.createElement('div');
+        swatch.className = 'w-6 h-6 rounded-full border border-slate-700 relative group cursor-pointer shadow-md shadow-black/40 ring-1 ring-white/10 hover:border-slate-500 hover:ring-white/20 transition';
+        swatch.style.backgroundColor = color;
+        swatch.title = color;
+
+        swatch.onclick = () => {
+          state.styleDescription.color_palette.splice(idx, 1);
+          renderAll(true);
+        };
+
+        const deleteTag = document.createElement('div');
+        deleteTag.className = 'absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity';
+        deleteTag.textContent = '×';
+        swatch.appendChild(deleteTag);
+
+        DOM.globalPaletteContainer.appendChild(swatch);
+      });
+    }
+
+    // Renders dynamic style description fields with editable titles
+    const STYLE_FIELDS = [
+      {key: 'aesthetics', label: 'Aesthetics', placeholder: 'Mood, vibe, artistic references...'},
+      {key: 'lighting', label: 'Lighting', placeholder: 'Lighting description...'},
+      {key: 'photo', label: 'Photo Style', placeholder: 'Photographic style notes (lens, film stock, etc.)'},
+      {key: 'art_style', label: 'Art Style', placeholder: 'Illustration/painting style hint'},
+      {key: 'medium', label: 'Medium', placeholder: 'Medium description (e.g. photograph, digital art)'},
+    ];
+
+    function migrateStyleDescription() {
+      if (state.styleDescription.fields) return;
+      const fields = [];
+      STYLE_FIELDS.forEach(sf => {
+        fields.push({
+          id: sf.key,
+          label: sf.label,
+          value: state.styleDescription[sf.key] || ''
+        });
+      });
+      state.styleDescription.fields = fields;
+      STYLE_FIELDS.forEach(sf => { delete state.styleDescription[sf.key]; });
+    }
+
+    function renderStyleFields() {
+      migrateStyleDescription();
+      DOM.styleFieldsContainer.innerHTML = '';
+
+      state.styleDescription.fields.forEach((field, idx) => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/60 transition group';
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'flex items-center gap-1.5 mb-1';
+
+        const titleInput = document.createElement('input');
+        titleInput.className = 'flex-1 bg-transparent text-[10px] font-bold uppercase tracking-wider text-indigo-400 border-b border-transparent focus:border-indigo-500 outline-none transition';
+        titleInput.value = field.label;
+        titleInput.placeholder = 'Field title...';
+        titleInput.addEventListener('input', () => { field.label = titleInput.value; debouncedSave(); });
+        titleRow.appendChild(titleInput);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'opacity-0 group-hover:opacity-100 transition text-red-400 hover:text-red-300 text-[11px] font-bold px-1 leading-none';
+        delBtn.textContent = '×';
+        delBtn.title = 'Remove field';
+        delBtn.addEventListener('click', () => {
+          state.styleDescription.fields.splice(idx, 1);
+          renderStyleFields();
+          debouncedSave();
+        });
+        titleRow.appendChild(delBtn);
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'w-full text-xs bg-slate-950 border border-slate-800 text-slate-100 rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500 transition placeholder-slate-600 custom-scroll resize-none leading-relaxed';
+        textarea.rows = 2;
+        textarea.placeholder = 'Enter description...';
+        textarea.value = field.value;
+        textarea.addEventListener('input', () => { field.value = textarea.value; debouncedSave(); });
+
+        card.appendChild(titleRow);
+        card.appendChild(textarea);
+        DOM.styleFieldsContainer.appendChild(card);
+      });
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'w-full mt-2 py-1.5 rounded-xl border border-dashed border-slate-700 text-slate-400 hover:text-indigo-400 hover:border-indigo-500 text-[11px] font-bold transition';
+      addBtn.textContent = '+ Add Style Field';
+      addBtn.addEventListener('click', () => {
+        const id = 'custom_' + Date.now() + '_' + state.styleDescription.fields.length;
+        state.styleDescription.fields.push({id, label: 'New Field', value: ''});
+        renderStyleFields();
+        debouncedSave();
+      });
+      DOM.styleFieldsContainer.appendChild(addBtn);
+    }
+
+    function renderFormElements() {
+      DOM.elementsList.innerHTML = '';
+      state.elements.forEach(el => {
+        const isSelected = el.id === state.selectedId;
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-xl border transition ${isSelected ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500' : 'border-slate-800 bg-slate-950/50'}`;
+        card.id = `form-${el.id}`;
+        card.onclick = () => selectElement(el.id);
+
+        const colorPickerHTML = `
+          <div class="border-t border-slate-800/50 pt-2.5 mt-2.5">
+            <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500 mb-1">Layer Color Swatches</label>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <div class="element-swatches-container flex flex-wrap gap-1.5"></div>
+              <div class="relative w-5 h-5">
+                <span class="absolute inset-0 rounded-full border border-dashed border-slate-700 flex items-center justify-center text-xs text-slate-400 pointer-events-none">+</span>
+                <input type="color" class="layer-color-picker" style="position:absolute;inset:0;opacity:0;cursor:pointer;border:none;padding:0" value="#6366f1">
+              </div>
+            </div>
+          </div>
+        `;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-2 gap-2">
+            <div class="flex items-center gap-1">
+              <button class="type-obj-btn text-[10px] font-bold px-1.5 py-0.5 rounded transition ${el.type === 'obj' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">OBJ</button>
+              <button class="type-text-btn text-[10px] font-bold px-1.5 py-0.5 rounded transition ${el.type === 'text' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">TEXT</button>
+              <span class="text-[10px] text-indigo-300 font-mono bg-indigo-950 px-1.5 py-0.5 rounded ml-1">
+                ${el.y1},${el.x1},${el.y2},${el.x2}
+              </span>
+            </div>
+            <button class="delete-btn text-slate-500 hover:text-red-500 transition shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-1.5">
+            <input type="text" class="text-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2 py-1 outline-none focus:border-indigo-500 transition ${el.type !== 'text' ? 'hidden' : ''}" value="${el.text || ''}" placeholder="Verbatim text to render...">
+            <div>
+              <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500">Description / Style</label>
+              <textarea rows="2" class="desc-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2.5 py-1 outline-none focus:border-indigo-500 leading-relaxed custom-scroll" placeholder="Visual specifications...">${el.desc}</textarea>
+            </div>
+            ${colorPickerHTML}
+          </div>
+        `;
+
+        card.querySelector('.type-obj-btn').addEventListener('click', (e) => {
+          e.stopPropagation(); el.type = 'obj'; renderAll();
+        });
+        card.querySelector('.type-text-btn').addEventListener('click', (e) => {
+          e.stopPropagation(); el.type = 'text'; renderAll();
+        });
+
+        card.querySelector('.text-val-input').addEventListener('input', (e) => {
+          el.text = e.target.value;
+          // Sync directly with canvas input if active on viewport
+          const inlineText = document.querySelector(`#box-${el.id} .inline-canvas-text`);
+          if (inlineText) inlineText.value = el.text;
+          debouncedSave();
+        });
+
+        card.querySelector('.desc-val-input').addEventListener('input', (e) => {
+          el.desc = e.target.value;
+          // Sync directly with canvas textbox if active on viewport
+          const inlineDesc = document.querySelector(`#box-${el.id} .inline-canvas-desc`);
+          if (inlineDesc) inlineDesc.value = el.desc;
+          debouncedSave();
+        });
+
+        card.querySelector('.delete-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.elements = state.elements.filter(item => item.id !== el.id);
+          if (state.selectedId === el.id) state.selectedId = null;
+          renderAll();
+        });
+
+        const swatchesContainer = card.querySelector('.element-swatches-container');
+        const colorPickerIn = card.querySelector('.layer-color-picker');
+
+        (el.color_palette || []).forEach((color, idx) => {
+          const circle = document.createElement('div');
+          circle.className = 'w-5 h-5 rounded-full border border-slate-700 relative group cursor-pointer shadow-md shadow-black/40 ring-1 ring-white/10 hover:border-slate-500 hover:ring-white/20 transition';
+          circle.style.backgroundColor = color;
+          
+          circle.onclick = (ev) => {
+            ev.stopPropagation();
+            el.color_palette.splice(idx, 1);
+            renderAll();
+          };
+
+          const delBadge = document.createElement('div');
+          delBadge.className = 'absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 flex items-center justify-center text-[7px] font-bold opacity-0 group-hover:opacity-100 transition-opacity';
+          delBadge.textContent = '×';
+          circle.appendChild(delBadge);
+
+          swatchesContainer.appendChild(circle);
+        });
+
+        colorPickerIn.addEventListener('change', () => {
+          if (el.color_palette.length < 5) {
+            el.color_palette.push(colorPickerIn.value);
+          }
+          renderAll();
+        });
+
+        DOM.elementsList.appendChild(card);
+      });
+    }
+
+    function renderCanvasBoxes() {
+      const overlay = document.getElementById('snap-overlay');
+      DOM.canvasArea.innerHTML = '';
+      if (overlay) DOM.canvasArea.appendChild(overlay);
+
+      // Render a polished Empty State graphic when canvas contains zero active layout elements
+      if (state.elements.length === 0) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-500 pointer-events-none select-none';
+        placeholder.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 mb-2 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span class="text-xs font-semibold text-slate-400">Canvas is empty</span>
+          <span class="text-[10px] text-slate-600 mt-1 max-w-[200px] leading-relaxed">Click & drag here to draw a new zone, or load a prompt preset above.</span>
+        `;
+        DOM.canvasArea.appendChild(placeholder);
+        return;
+      }
+
+      state.elements.forEach(el => {
+        const isSelected = el.id === state.selectedId;
+        const box = document.createElement('div');
+        box.id = `box-${el.id}`;
+        box.className = `absolute border ${isSelected ? 'border-indigo-500 bg-indigo-500/10 z-20 shadow-lg' : 'border-slate-700 bg-slate-900/40 z-10 hover:border-slate-500'}`;
+        
+        box.style.top = `${el.y1 / 10}%`;
+        box.style.left = `${el.x1 / 10}%`;
+        box.style.width = `${(el.x2 - el.x1) / 10}%`;
+        box.style.height = `${(el.y2 - el.y1) / 10}%`;
+
+        const tag = document.createElement('div');
+        tag.className = `absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-mono font-bold select-none pointer-events-none ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-850 text-slate-300'}`;
+        tag.innerHTML = `<span class="coords-display opacity-60 text-[7px]">${el.type.toUpperCase()} ${el.y1},${el.x1}</span>`;
+        box.appendChild(tag);
+
+        // --- INLINE CANVAS EDITABLE INFORMATION ---
+        const widthVal = el.x2 - el.x1;
+        const heightVal = el.y2 - el.y1;
+        const isLargeEnough = widthVal >= 180 && heightVal >= 120;
+
+        if (isLargeEnough) {
+          const inlineForm = document.createElement('div');
+          inlineForm.className = 'absolute inset-0 p-2 pt-6 flex flex-col gap-1 overflow-hidden justify-end pointer-events-auto';
+
+          const typeRow = document.createElement('div');
+          typeRow.className = 'flex items-center gap-1';
+          const objBtn = document.createElement('button');
+          objBtn.className = `px-1.5 py-0.5 rounded text-[9px] font-bold leading-none transition ${el.type === 'obj' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`;
+          objBtn.textContent = 'OBJ';
+          const textBtn = document.createElement('button');
+          textBtn.className = `px-1.5 py-0.5 rounded text-[9px] font-bold leading-none transition ${el.type === 'text' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`;
+          textBtn.textContent = 'TEXT';
+          objBtn.addEventListener('mousedown', (ev) => {
+            ev.stopPropagation();
+            if (el.type !== 'obj') { el.type = 'obj'; renderAll(true); }
+          });
+          textBtn.addEventListener('mousedown', (ev) => {
+            ev.stopPropagation();
+            if (el.type !== 'text') { el.type = 'text'; renderAll(true); }
+          });
+          typeRow.appendChild(objBtn);
+          typeRow.appendChild(textBtn);
+
+          let textInputHTML = '';
+          if (el.type === 'text') {
+            textInputHTML = `
+              <input type="text" class="inline-canvas-text w-full text-[10px] bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-slate-100 focus:border-indigo-500 outline-none" value="${el.text || ''}" placeholder="Literal content...">
+            `;
+          }
+
+          inlineForm.innerHTML = `
+            ${textInputHTML}
+            <textarea class="inline-canvas-desc w-full text-[10px] bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-slate-100 focus:border-indigo-500 outline-none resize-none leading-tight custom-scroll" placeholder="Desc..." rows="1">${el.desc || ''}</textarea>
+          `;
+
+          inlineForm.insertBefore(typeRow, inlineForm.firstChild);
+          const colorRow = document.createElement('div');
+          colorRow.className = 'flex items-center gap-1.5';
+          (el.color_palette || []).forEach((color, idx) => {
+            const dot = document.createElement('div');
+            dot.className = 'w-3 h-3 rounded-full border border-white/20 shadow-sm cursor-pointer hover:ring-1 hover:ring-red-400/60 transition';
+            dot.style.backgroundColor = color;
+            dot.addEventListener('mousedown', (ev) => {
+              ev.stopPropagation();
+              el.color_palette.splice(idx, 1);
+              renderAll(true);
+            });
+            colorRow.appendChild(dot);
+          });
+          if ((el.color_palette || []).length < 5) {
+            const addWrap = document.createElement('div');
+            addWrap.className = 'relative w-3.5 h-3.5';
+            addWrap.innerHTML = '<span class="absolute inset-0 rounded-full border border-dashed border-slate-600 flex items-center justify-center text-[7px] text-slate-400 pointer-events-none">+</span>';
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;border:none;padding:0';
+            colorInput.addEventListener('mousedown', (ev) => { ev.stopPropagation(); });
+            colorInput.addEventListener('change', () => {
+              if (el.color_palette.length < 5) {
+                el.color_palette.push(colorInput.value);
+                renderAll(true);
+              }
+            });
+            addWrap.appendChild(colorInput);
+            colorRow.appendChild(addWrap);
+          }
+          inlineForm.appendChild(colorRow);
+
+          // Bind mouse event limits to ensure inline input typing doesn't drag the layout canvas elements
+          const stopEvents = (ev) => { 
+            ev.stopPropagation(); 
+            selectElement(el.id); // Direct select element on editing interaction focus
+          };
+          
+          const textIn = inlineForm.querySelector('.inline-canvas-text');
+          const descIn = inlineForm.querySelector('.inline-canvas-desc');
+
+          if (textIn) {
+            textIn.addEventListener('mousedown', stopEvents);
+            textIn.addEventListener('keydown', stopEvents);
+            textIn.addEventListener('input', (e) => {
+              el.text = e.target.value;
+              // Sync directly to left properties card without reset focus
+              const sidebarInput = document.querySelector(`#form-${el.id} .text-val-input`);
+              if (sidebarInput) sidebarInput.value = el.text;
+              debouncedSave();
+            });
+          }
+
+          if (descIn) {
+            descIn.addEventListener('mousedown', stopEvents);
+            descIn.addEventListener('keydown', stopEvents);
+            descIn.addEventListener('input', (e) => {
+              el.desc = e.target.value;
+              // Sync directly to properties details field without reset focus
+              const sidebarDesc = document.querySelector(`#form-${el.id} .desc-val-input`);
+              if (sidebarDesc) sidebarDesc.value = el.desc;
+              debouncedSave();
+            });
+          }
+
+          box.appendChild(inlineForm);
+        }
+
+        if (isSelected) {
+          ['n','s','e','w','nw','ne','se','sw'].forEach(dir => {
+            const rh = document.createElement('div');
+            rh.className = `resize-handle resize-handle-${dir}`;
+            rh.dataset.dir = dir;
+            rh.addEventListener('mousedown', (e) => handleResizeMouseDown(e, el.id));
+            box.appendChild(rh);
+          });
+        }
+
+        box.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.resize-handle')) return;
+          handleDragMouseDown(e, el.id);
+        });
+
+        DOM.canvasArea.appendChild(box);
+      });
+    }
+
+    // Fully optimized, focus-safe box selection pipeline
+    function selectElement(id) {
+      if (state.selectedId === id) return; // Already selected, ignore to maintain focused inputs
+      
+      state.selectedId = id;
+      
+      // 1. Manually update style sheets and inject 8 directional resize handles to the target box
+      document.querySelectorAll('[id^="box-"]').forEach(boxEl => {
+        const boxId = boxEl.id.replace('box-', '');
+        if (boxId === id) {
+          boxEl.className = 'absolute border border-indigo-500 bg-indigo-500/10 z-20 shadow-lg';
+          
+          if (!boxEl.querySelector('.resize-handle')) {
+            ['n','s','e','w','nw','ne','se','sw'].forEach(dir => {
+              const rh = document.createElement('div');
+              rh.className = `resize-handle resize-handle-${dir}`;
+              rh.dataset.dir = dir;
+              rh.addEventListener('mousedown', (e) => handleResizeMouseDown(e, boxId));
+              boxEl.appendChild(rh);
+            });
+          }
+        } else {
+          boxEl.className = 'absolute border border-slate-700 bg-slate-900/40 z-10 hover:border-slate-500';
+          boxEl.querySelectorAll('.resize-handle').forEach(rh => rh.remove());
+        }
+      });
+
+      // 2. Refresh properties card classes in sidebar
+      document.querySelectorAll('[id^="form-"]').forEach(el => {
+        el.className = 'p-4 rounded-xl border transition border-slate-850 bg-slate-950/50';
+      });
+      const activeForm = document.getElementById(`form-${id}`);
+      if (activeForm) {
+        activeForm.className = 'p-4 rounded-xl border transition border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500';
+        activeForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      // 3. Automatically snap tab selector directly to Layer list on direct click select
+      if (state.activeTab !== 'layers') {
+        state.activeTab = 'layers';
+        syncActiveTab(false);
+      }
+    }
+
+    let activeAction = null; 
+    let activeDirection = null; // for resize: 'n','s','e','w','ne','nw','se','sw'
+    let currentElementId = null;
+    let initialX = 0, initialY = 0;
+    let rectBounds = null;
+    let initialBoxCoords = {};
+
+    function handleCanvasMouseDown(e) {
+      if (e.target !== DOM.canvasArea) return; 
+      e.preventDefault();
+
+      activeAction = 'drawing';
+      rectBounds = DOM.canvasArea.getBoundingClientRect();
+      
+      const clickX = ((e.clientX - rectBounds.left) / rectBounds.width) * 1000;
+      const clickY = ((e.clientY - rectBounds.top) / rectBounds.height) * 1000;
+
+      const newId = generateId();
+      const newEl = {
+        id: newId,
+        type: 'obj',
+        text: '',
+        desc: 'Custom drag drawn element',
+        y1: Math.round(clickY),
+        x1: Math.round(clickX),
+        y2: Math.round(clickY),
+        x2: Math.round(clickX),
+        color_palette: []
+      };
+
+      state.elements.push(newEl);
+      state.selectedId = newId;
+      currentElementId = newId;
+      initialBoxCoords = { x1: newEl.x1, y1: newEl.y1, x2: newEl.x2, y2: newEl.y2 };
+
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+
+    function handleDragMouseDown(e, id) {
+      e.preventDefault();
+      e.stopPropagation();
+      selectElement(id);
+
+      activeAction = 'dragging';
+      currentElementId = id;
+      rectBounds = DOM.canvasArea.getBoundingClientRect();
+
+      initialX = e.clientX;
+      initialY = e.clientY;
+
+      const el = state.elements.find(item => item.id === id);
+      initialBoxCoords = { ...el };
+
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+
+    function handleResizeMouseDown(e, id) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      activeAction = 'resizing';
+      activeDirection = e.target.dataset.dir || 'se';
+      currentElementId = id;
+      rectBounds = DOM.canvasArea.getBoundingClientRect();
+
+      initialX = e.clientX;
+      initialY = e.clientY;
+
+      const el = state.elements.find(item => item.id === id);
+      initialBoxCoords = { ...el };
+
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+
+    function handleGlobalMouseMove(e) {
+      if (!activeAction || !currentElementId) return;
+
+      const el = state.elements.find(item => item.id === currentElementId);
+      if (!el) return;
+
+      const deltaX = ((e.clientX - initialX) / rectBounds.width) * 1000;
+      const deltaY = ((e.clientY - initialY) / rectBounds.height) * 1000;
+
+      if (activeAction === 'drawing') {
+        const mouseX = ((e.clientX - rectBounds.left) / rectBounds.width) * 1000;
+        const mouseY = ((e.clientY - rectBounds.top) / rectBounds.height) * 1000;
+
+        const anchorX = initialBoxCoords.x1;
+        const anchorY = initialBoxCoords.y1;
+
+        let newX1 = Math.round(Math.min(anchorX, mouseX));
+        let newY1 = Math.round(Math.min(anchorY, mouseY));
+        let newX2 = Math.round(Math.max(anchorX, mouseX));
+        let newY2 = Math.round(Math.max(anchorY, mouseY));
+
+        if (snapEnabled) {
+          const snapped = applyDrawSnap(el.id, newX1, newY1, newX2, newY2);
+          newX1 = snapped.x1; newY1 = snapped.y1;
+          newX2 = snapped.x2; newY2 = snapped.y2;
+        }
+
+        el.x1 = Math.max(0, Math.min(1000, newX1));
+        el.y1 = Math.max(0, Math.min(1000, newY1));
+        el.x2 = Math.max(0, Math.min(1000, newX2));
+        el.y2 = Math.max(0, Math.min(1000, newY2));
+
+        renderSnapLines();
+      } 
+      else if (activeAction === 'dragging') {
+        const width = initialBoxCoords.x2 - initialBoxCoords.x1;
+        const height = initialBoxCoords.y2 - initialBoxCoords.y1;
+
+        let newX1 = Math.round(initialBoxCoords.x1 + deltaX);
+        let newY1 = Math.round(initialBoxCoords.y1 + deltaY);
+
+        if (snapEnabled) {
+          const snapped = applyDragSnap(el.id, newX1, newY1, newX1 + width, newY1 + height);
+          newX1 = snapped.x1;
+          newY1 = snapped.y1;
+        }
+
+        if (newX1 < 0) newX1 = 0;
+        if (newY1 < 0) newY1 = 0;
+        if (newX1 + width > 1000) newX1 = 1000 - width;
+        if (newY1 + height > 1000) newY1 = 1000 - height;
+
+        el.x1 = newX1;
+        el.y1 = newY1;
+        el.x2 = newX1 + width;
+        el.y2 = newY1 + height;
+
+        renderSnapLines();
+      } 
+      else if (activeAction === 'resizing') {
+        const dir = activeDirection;
+        let {x1, y1, x2, y2} = initialBoxCoords;
+        const minSize = 30;
+
+        // Apply delta to the appropriate edges
+        if (dir.includes('e')) x2 = Math.round(initialBoxCoords.x2 + deltaX);
+        if (dir.includes('w')) x1 = Math.round(initialBoxCoords.x1 + deltaX);
+        if (dir.includes('s')) y2 = Math.round(initialBoxCoords.y2 + deltaY);
+        if (dir.includes('n')) y1 = Math.round(initialBoxCoords.y1 + deltaY);
+
+        // Apply snapping
+        if (snapEnabled) {
+          const snapped = applyResizeSnap(el.id, x1, y1, x2, y2, dir);
+          x1 = snapped.x1; y1 = snapped.y1; x2 = snapped.x2; y2 = snapped.y2;
+        }
+
+        // Enforce min size and canvas bounds
+        if (x2 - x1 < minSize) {
+          if (dir.includes('e')) x2 = x1 + minSize;
+          else x1 = x2 - minSize;
+        }
+        if (y2 - y1 < minSize) {
+          if (dir.includes('s')) y2 = y1 + minSize;
+          else y1 = y2 - minSize;
+        }
+        x1 = Math.max(0, Math.min(1000, x1));
+        y1 = Math.max(0, Math.min(1000, y1));
+        x2 = Math.max(0, Math.min(1000, x2));
+        y2 = Math.max(0, Math.min(1000, y2));
+        // Re-enforce min after clamping
+        if (x2 - x1 < minSize) {
+          if (dir.includes('e')) x2 = Math.min(1000, x1 + minSize);
+          else x1 = Math.max(0, x2 - minSize);
+        }
+        if (y2 - y1 < minSize) {
+          if (dir.includes('s')) y2 = Math.min(1000, y1 + minSize);
+          else y1 = Math.max(0, y2 - minSize);
+        }
+
+        el.x1 = x1; el.y1 = y1; el.x2 = x2; el.y2 = y2;
+
+        renderSnapLines();
+      }
+
+      const visualBox = document.getElementById(`box-${el.id}`);
+      if (visualBox) {
+        visualBox.style.top = `${el.y1 / 10}%`;
+        visualBox.style.left = `${el.x1 / 10}%`;
+        visualBox.style.width = `${(el.x2 - el.x1) / 10}%`;
+        visualBox.style.height = `${(el.y2 - el.y1) / 10}%`;
+        
+        const coordsDisp = visualBox.querySelector('.coords-display');
+        if (coordsDisp) {
+          coordsDisp.textContent = `[${el.y1}, ${el.x1}]`;
+        }
+      }
+
+    }
+
+    function handleGlobalMouseUp() {
+      clearSnapLines();
+      let isChanged = false;
+      if (activeAction === 'drawing') {
+        const el = state.elements.find(item => item.id === currentElementId);
+        if (el && (el.x2 - el.x1 < 10 || el.y2 - el.y1 < 10)) {
+          state.elements = state.elements.filter(item => item.id !== el.id);
+          state.selectedId = null;
+        } else {
+          isChanged = true;
+          state.activeTab = 'layers';
+          syncActiveTab(false);
+        }
+      } else if (activeAction === 'dragging' || activeAction === 'resizing') {
+        const el = state.elements.find(item => item.id === currentElementId);
+        if (el && (el.x1 !== initialBoxCoords.x1 || el.y1 !== initialBoxCoords.y1 || el.x2 !== initialBoxCoords.x2 || el.y2 !== initialBoxCoords.y2)) {
+          isChanged = true;
+        }
+      }
+
+      activeAction = null;
+      activeDirection = null;
+      currentElementId = null;
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      
+      renderAll(isChanged); 
+    }
+
+    function generateJSON() {
+      function buildElement(el) {
+        const e = { type: el.type };
+        if (el.type === 'text') {
+          e.text = el.text || '';
+        }
+        e.bbox = [el.y1, el.x1, el.y2, el.x2];
+        e.desc = el.desc;
+        if (el.color_palette && el.color_palette.length > 0) {
+          e.color_palette = el.color_palette;
+        }
+        return e;
+      }
+
+      const fieldVals = {};
+      if (state.styleDescription.fields) {
+        state.styleDescription.fields.forEach(f => { fieldVals[f.id] = f.value; });
+      } else {
+        STYLE_FIELDS.forEach(sf => { fieldVals[sf.key] = state.styleDescription[sf.key] || ''; });
+      }
+      const sd = {
+        aesthetics: fieldVals.aesthetics || '',
+        lighting: fieldVals.lighting || '',
+        medium: fieldVals.medium || ''
+      };
+      if (fieldVals.art_style) sd.art_style = fieldVals.art_style;
+      if (fieldVals.photo) sd.photo = fieldVals.photo;
+      sd.color_palette = state.styleDescription.color_palette;
+
+      const outputStructure = {
+        high_level_description: state.highLevelDescription,
+        style_description: sd,
+        compositional_deconstruction: {
+          background: state.background,
+          elements: state.elements.map(buildElement)
+        }
+      };
+
+      const isMinified = DOM.minifyToggle.checked;
+      DOM.jsonOutput.value = isMinified 
+        ? JSON.stringify(outputStructure) 
+        : JSON.stringify(outputStructure, null, 2);
+    }
+
+    function handleCopyJSON() {
+      DOM.jsonOutput.select();
+      navigator.clipboard.writeText(DOM.jsonOutput.value)
+        .then(() => {
+          const originalText = DOM.copyBtn.innerHTML;
+          DOM.copyBtn.innerHTML = '✓ Copied Configuration';
+          DOM.copyBtn.classList.replace('bg-indigo-600', 'bg-green-600');
+          setTimeout(() => {
+            DOM.copyBtn.innerHTML = originalText;
+            DOM.copyBtn.classList.replace('bg-green-600', 'bg-indigo-600');
+          }, 2000);
+        })
+        .catch(() => {
+          DOM.jsonOutput.select();
+          document.execCommand('copy');
+        });
+    }
+  </script>
+</body>
+</html>
