@@ -273,6 +273,27 @@
           </svg>
           Copy Code Configuration
         </button>
+
+        <div class="grid grid-cols-4 gap-0 rounded-lg overflow-hidden border border-slate-700/50 bg-slate-800/30">
+          <button id="save-state-btn" class="py-2 bg-transparent hover:bg-indigo-600/20 text-slate-400 hover:text-indigo-400 text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5 border-r border-slate-700/50 last:border-r-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>Save</span>
+          </button>
+          <button id="load-state-btn" class="py-2 bg-transparent hover:bg-indigo-600/20 text-slate-400 hover:text-indigo-400 text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5 border-r border-slate-700/50 last:border-r-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L5 8m4-4v12"/></svg>
+            <span>Load</span>
+          </button>
+          <button id="copy-state-btn" class="py-2 bg-transparent hover:bg-indigo-600/20 text-slate-400 hover:text-indigo-400 text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5 border-r border-slate-700/50 last:border-r-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span>Copy</span>
+          </button>
+          <button id="paste-state-btn" class="py-2 bg-transparent hover:bg-indigo-600/20 text-slate-400 hover:text-indigo-400 text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>Paste</span>
+          </button>
+        </div>
+
+        <input type="file" id="load-state-input" accept=".json" class="hidden">
       </div>
     </section>
 
@@ -590,7 +611,8 @@
         'snap-toggle-btn',
         'align-left-btn', 'align-center-h-btn', 'align-right-btn',
         'align-top-btn', 'align-center-v-btn', 'align-bottom-btn',
-        'align-offset-input'
+        'align-offset-input',
+        'save-state-btn', 'load-state-btn', 'copy-state-btn', 'paste-state-btn', 'load-state-input'
       ];
       
       elementsToCache.forEach(id => {
@@ -675,6 +697,12 @@
 
       DOM.undoBtn.addEventListener('click', () => history.undo());
       DOM.redoBtn.addEventListener('click', () => history.redo());
+
+      DOM.saveStateBtn.addEventListener('click', handleSaveState);
+      DOM.loadStateBtn.addEventListener('click', () => DOM.loadStateInput.click());
+      DOM.loadStateInput.addEventListener('change', handleLoadState);
+      DOM.copyStateBtn.addEventListener('click', handleCopyState);
+      DOM.pasteStateBtn.addEventListener('click', handlePasteState);
 
       history.save();
       syncAspectUI();
@@ -1755,6 +1783,123 @@
         .catch(() => {
           DOM.jsonOutput.select();
           document.execCommand('copy');
+        });
+    }
+
+    function serializeState() {
+      return {
+        aspectRatio: state.aspectRatio,
+        activeTab: state.activeTab,
+        highLevelDescription: state.highLevelDescription,
+        styleDescription: state.styleDescription,
+        background: state.background,
+        elements: state.elements,
+        selectedId: state.selectedId
+      };
+    }
+
+    function restoreState(data) {
+      state.aspectRatio = data.aspectRatio || '3:4';
+      state.activeTab = data.activeTab || 'global';
+      state.highLevelDescription = data.highLevelDescription || '';
+      state.styleDescription = JSON.parse(JSON.stringify(data.styleDescription || { fields: [], color_palette: [] }));
+      state.background = data.background || '';
+      state.elements = (data.elements || []).map(el => ({ ...el }));
+      state.selectedId = data.selectedId || null;
+
+      DOM.hldInput.value = state.highLevelDescription;
+      DOM.backgroundInput.value = state.background;
+
+      syncAspectUI();
+      resizeCanvas();
+      renderAll(true);
+    }
+
+    function flashBtn(btn, text, duration = 1500) {
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = text;
+      btn.classList.replace('bg-transparent', 'bg-green-700');
+      btn.classList.add('text-white');
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.classList.replace('bg-green-700', 'bg-transparent');
+        btn.classList.remove('text-white');
+      }, duration);
+    }
+
+    async function handleSaveState() {
+      const data = serializeState();
+      const content = JSON.stringify(data, null, 2);
+      const blob = new Blob([content], { type: 'application/json' });
+
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: 'ideogram-state.json',
+            types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(content);
+          await writable.close();
+          flashBtn(DOM.saveStateBtn, '✓ Saved');
+          return;
+        } catch (_) {}
+      }
+
+      const name = prompt('Filename:', 'ideogram-state.json');
+      if (!name) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+      flashBtn(DOM.saveStateBtn, '✓ Saved');
+    }
+
+    function handleLoadState(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          restoreState(data);
+          flashBtn(DOM.loadStateBtn, '✓ Loaded');
+        } catch (err) {
+          flashBtn(DOM.loadStateBtn, '✗ Invalid JSON');
+        }
+      };
+      reader.readAsText(file);
+      DOM.loadStateInput.value = '';
+    }
+
+    function handleCopyState() {
+      const data = serializeState();
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+        .then(() => {
+          flashBtn(DOM.copyStateBtn, '✓ Copied');
+        })
+        .catch(() => {
+          flashBtn(DOM.copyStateBtn, '✗ Failed');
+        });
+    }
+
+    function handlePasteState() {
+      navigator.clipboard.readText()
+        .then(text => {
+          try {
+            const data = JSON.parse(text);
+            if (typeof data !== 'object' || data === null) throw new Error();
+            if (!('elements' in data) && !('highLevelDescription' in data)) throw new Error();
+            restoreState(data);
+            flashBtn(DOM.pasteStateBtn, '✓ Pasted');
+          } catch (err) {
+            flashBtn(DOM.pasteStateBtn, '✗ Invalid JSON');
+          }
+        })
+        .catch(() => {
+          flashBtn(DOM.pasteStateBtn, '✗ Paste failed');
         });
     }
   </script>
