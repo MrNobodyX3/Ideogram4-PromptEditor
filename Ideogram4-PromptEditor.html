@@ -324,6 +324,7 @@
 
   <!-- Interactive JavaScript Controller -->
   <script>
+    'use strict';
     const state = {
 
       aspectRatio: '3:4',
@@ -456,15 +457,28 @@
       return { x1, y1, x2, y2 };
     }
 
+    let _snapContainer = null;
+
+    function getSnapContainer() {
+      if (!_snapContainer || !document.body.contains(_snapContainer)) {
+        _snapContainer = document.createElement('div');
+        _snapContainer.id = 'snap-guide-container';
+        _snapContainer.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:100;';
+        DOM.canvasArea.appendChild(_snapContainer);
+      }
+      return _snapContainer;
+    }
+
     function renderSnapLines() {
-      document.querySelectorAll('.snap-guide-line').forEach(el => el.remove());
-      const area = DOM.canvasArea;
-      if (!area) return;
-      snapLines.forEach(line => {
+      if (!DOM.canvasArea) return;
+      const container = getSnapContainer();
+      container.innerHTML = '';
+      if (snapLines.length === 0) return;
+      for (let i = 0; i < snapLines.length; i++) {
+        const line = snapLines[i];
         const guide = document.createElement('div');
-        guide.className = 'snap-guide-line absolute pointer-events-none';
-        guide.style.background = '#6366f1';
-        guide.style.opacity = '0.8';
+        guide.className = 'snap-guide-line';
+        guide.style.cssText = 'position:absolute;pointer-events:none;background:#6366f1;opacity:0.8;';
         if (line.axis === 'x') {
           guide.style.left = `${line.value / 10}%`;
           guide.style.top = '0';
@@ -476,13 +490,15 @@
           guide.style.width = '100%';
           guide.style.height = '1px';
         }
-        area.appendChild(guide);
-      });
+        container.appendChild(guide);
+      }
     }
 
     function clearSnapLines() {
       snapLines = [];
-      document.querySelectorAll('.snap-guide-line').forEach(el => el.remove());
+      if (_snapContainer && document.body.contains(_snapContainer)) {
+        _snapContainer.innerHTML = '';
+      }
     }
 
     function alignElement(dir) {
@@ -588,7 +604,6 @@
     }
 
     const _fitCtx = document.createElement('canvas').getContext('2d');
-    let _measureEl = null;
 
     function calcTextScale(text, boxW, boxH) {
       if (!text) return { size: Math.min(boxW, boxH, 300), scaleX: 1, scaleY: 1 };
@@ -596,25 +611,19 @@
       const h = Math.max(20, boxH);
       const lines = text.split('\n');
 
-      if (!_measureEl) {
-        _measureEl = document.createElement('div');
-        _measureEl.style.cssText = 'position:absolute;left:0;top:0;white-space:pre;line-height:1;font-family:sans-serif;visibility:hidden;pointer-events:none;';
-        document.body.appendChild(_measureEl);
-      }
-
-      // Base font-size: scales with box height and line count
       const baseSize = Math.max(8, Math.min(300, h / Math.max(1, lines.length)));
 
-      _measureEl.textContent = text;
-      _measureEl.style.fontSize = baseSize + 'px';
-      void _measureEl.offsetHeight;
-
-      const natW = _measureEl.scrollWidth;
-      const natH = _measureEl.scrollHeight;
+      _fitCtx.font = `${baseSize}px sans-serif`;
+      let maxW = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const m = _fitCtx.measureText(lines[i]);
+        maxW = Math.max(maxW, m.width);
+      }
+      const natH = baseSize * Math.max(1, lines.length);
 
       return {
         size: baseSize,
-        scaleX: w / Math.max(1, natW),
+        scaleX: w / Math.max(1, maxW),
         scaleY: h / Math.max(1, natH)
       };
     }
@@ -657,6 +666,8 @@
     function init() {
       DOM.hldInput.value = state.highLevelDescription;
       DOM.backgroundInput.value = state.background;
+
+      migrateStyleDescription();
 
       // Initial snap button state
       DOM.snapToggleBtn.className = 'text-xs font-bold flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-600/20 text-indigo-400 border border-indigo-800 transition';
@@ -1284,6 +1295,7 @@
     }
 
     // Clamps, scales, and live-redraws custom numeric ratios on input typing
+    let _ratioTimer = null;
     function handleCustomRatioChange() {
       let w = parseInt(DOM.customRatioW.value) || 1;
       let h = parseInt(DOM.customRatioH.value) || 1;
@@ -1294,8 +1306,9 @@
       DOM.customRatioH.value = h;
 
       state.aspectRatio = `${w}:${h}`;
-      resizeCanvas();
-      debouncedSave(); // Use debounce to cleanly avoid history stacking while typing numbers
+      clearTimeout(_ratioTimer);
+      _ratioTimer = setTimeout(resizeCanvas, 150);
+      debouncedSave();
     }
 
     function handleAddElement() {
@@ -1372,7 +1385,6 @@
     }
 
     function renderStyleFields() {
-      migrateStyleDescription();
       DOM.styleFieldsContainer.innerHTML = '';
 
       state.styleDescription.fields.forEach((field, idx) => {
@@ -1772,44 +1784,45 @@
       });
     }
 
-    // Fully optimized, focus-safe box selection pipeline
     function selectElement(id) {
-      if (state.selectedId === id) return; // Already selected, ignore to maintain focused inputs
-      
+      if (state.selectedId === id) return;
+      const prevId = state.selectedId;
       state.selectedId = id;
-      
-      // 1. Manually update style sheets and inject 8 directional resize handles to the target box
-      document.querySelectorAll('[id^="box-"]').forEach(boxEl => {
-        const boxId = boxEl.id.replace('box-', '');
-        if (boxId === id) {
-          boxEl.className = 'absolute border border-indigo-500 bg-indigo-500/10 z-20 shadow-lg';
-          
-          if (!boxEl.querySelector('.resize-handle')) {
-            ['n','s','e','w','nw','ne','se','sw'].forEach(dir => {
-              const rh = document.createElement('div');
-              rh.className = `resize-handle resize-handle-${dir}`;
-              rh.dataset.dir = dir;
-              rh.addEventListener('mousedown', (e) => handleResizeMouseDown(e, boxId));
-              boxEl.appendChild(rh);
-            });
-          }
-        } else {
-          boxEl.className = 'absolute border border-slate-700 bg-slate-900/40 z-10 hover:border-slate-500';
-          boxEl.querySelectorAll('.resize-handle').forEach(rh => rh.remove());
-        }
-      });
 
-      // 2. Refresh properties card classes in sidebar
-      document.querySelectorAll('[id^="form-"]').forEach(el => {
-        el.className = 'p-4 rounded-xl border transition border-slate-850 bg-slate-950/50';
-      });
-      const activeForm = document.getElementById(`form-${id}`);
-      if (activeForm) {
-        activeForm.className = 'p-4 rounded-xl border transition border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500';
-        activeForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Toggle previous selection off
+      if (prevId) {
+        const prevBox = document.getElementById(`box-${prevId}`);
+        if (prevBox) {
+          prevBox.className = 'absolute border border-slate-700 bg-slate-900/40 z-10 hover:border-slate-500';
+          prevBox.querySelectorAll('.resize-handle').forEach(rh => rh.remove());
+        }
+        const prevForm = document.getElementById(`form-${prevId}`);
+        if (prevForm) {
+          prevForm.className = 'p-4 rounded-xl border transition border-slate-800 bg-slate-950/50';
+        }
       }
 
-      // 3. Automatically snap tab selector directly to Layer list on direct click select
+      // Highlight new selection
+      const newBox = document.getElementById(`box-${id}`);
+      if (newBox) {
+        newBox.className = 'absolute border border-indigo-500 bg-indigo-500/10 z-20 shadow-lg';
+        if (!newBox.querySelector('.resize-handle')) {
+          ['n','s','e','w','nw','ne','se','sw'].forEach(dir => {
+            const rh = document.createElement('div');
+            rh.className = `resize-handle resize-handle-${dir}`;
+            rh.dataset.dir = dir;
+            rh.addEventListener('mousedown', (e) => handleResizeMouseDown(e, id));
+            newBox.appendChild(rh);
+          });
+        }
+      }
+
+      const newForm = document.getElementById(`form-${id}`);
+      if (newForm) {
+        newForm.className = 'p-4 rounded-xl border transition border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500';
+        newForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
       if (state.activeTab !== 'layers') {
         state.activeTab = 'layers';
         syncActiveTab(false);
@@ -1822,6 +1835,9 @@
     let initialX = 0, initialY = 0;
     let rectBounds = null;
     let initialBoxCoords = {};
+    let _rafPending = false;
+    let _rafId = null;
+    let _dragElId = null;
 
     function handleCanvasMouseDown(e) {
       if (e.target !== DOM.canvasArea) return; 
@@ -1924,8 +1940,6 @@
         el.y1 = Math.max(0, Math.min(1000, newY1));
         el.x2 = Math.max(0, Math.min(1000, newX2));
         el.y2 = Math.max(0, Math.min(1000, newY2));
-
-        renderSnapLines();
       } 
       else if (activeAction === 'dragging') {
         const width = initialBoxCoords.x2 - initialBoxCoords.x1;
@@ -1949,27 +1963,22 @@
         el.y1 = newY1;
         el.x2 = newX1 + width;
         el.y2 = newY1 + height;
-
-        renderSnapLines();
       } 
       else if (activeAction === 'resizing') {
         const dir = activeDirection;
         let {x1, y1, x2, y2} = initialBoxCoords;
         const minSize = 30;
 
-        // Apply delta to the appropriate edges
         if (dir.includes('e')) x2 = Math.round(initialBoxCoords.x2 + deltaX);
         if (dir.includes('w')) x1 = Math.round(initialBoxCoords.x1 + deltaX);
         if (dir.includes('s')) y2 = Math.round(initialBoxCoords.y2 + deltaY);
         if (dir.includes('n')) y1 = Math.round(initialBoxCoords.y1 + deltaY);
 
-        // Apply snapping
         if (snapEnabled) {
           const snapped = applyResizeSnap(el.id, x1, y1, x2, y2, dir);
           x1 = snapped.x1; y1 = snapped.y1; x2 = snapped.x2; y2 = snapped.y2;
         }
 
-        // Enforce min size and canvas bounds
         if (x2 - x1 < minSize) {
           if (dir.includes('e')) x2 = x1 + minSize;
           else x1 = x2 - minSize;
@@ -1982,7 +1991,6 @@
         y1 = Math.max(0, Math.min(1000, y1));
         x2 = Math.max(0, Math.min(1000, x2));
         y2 = Math.max(0, Math.min(1000, y2));
-        // Re-enforce min after clamping
         if (x2 - x1 < minSize) {
           if (dir.includes('e')) x2 = Math.min(1000, x1 + minSize);
           else x1 = Math.max(0, x2 - minSize);
@@ -1993,32 +2001,43 @@
         }
 
         el.x1 = x1; el.y1 = y1; el.x2 = x2; el.y2 = y2;
-
-        renderSnapLines();
       }
 
-      const visualBox = document.getElementById(`box-${el.id}`);
-      if (visualBox) {
-        visualBox.style.top = `${el.y1 / 10}%`;
-        visualBox.style.left = `${el.x1 / 10}%`;
-        visualBox.style.width = `${(el.x2 - el.x1) / 10}%`;
-        visualBox.style.height = `${(el.y2 - el.y1) / 10}%`;
+      // Batch DOM updates with requestAnimationFrame
+      _dragElId = el.id;
+      if (!_rafPending) {
+        _rafPending = true;
+        _rafId = requestAnimationFrame(() => {
+          _rafPending = false;
+          _rafId = null;
+          const targetId = _dragElId;
+          const targetEl = state.elements.find(item => item.id === targetId);
+          if (!targetEl) return;
 
-        // live rescale text to match new box dimensions
-        if (el.type === 'text') {
-          const textEl = visualBox.querySelector('.inline-canvas-text');
-          if (textEl) {
-            const cw = DOM.canvasArea.clientWidth;
-            const ch = DOM.canvasArea.clientHeight;
-            const bW = cw * (el.x2 - el.x1) / 1000;
-            const bH = ch * (el.y2 - el.y1) / 1000;
-            const { size, scaleX, scaleY } = calcTextScale(el.text, bW, bH);
-            textEl.style.fontSize = size + 'px';
-            textEl.style.transform = `scale(${scaleX},${scaleY})`;
+          renderSnapLines();
+
+          const visualBox = document.getElementById(`box-${targetEl.id}`);
+          if (visualBox) {
+            visualBox.style.top = `${targetEl.y1 / 10}%`;
+            visualBox.style.left = `${targetEl.x1 / 10}%`;
+            visualBox.style.width = `${(targetEl.x2 - targetEl.x1) / 10}%`;
+            visualBox.style.height = `${(targetEl.y2 - targetEl.y1) / 10}%`;
+
+            if (targetEl.type === 'text') {
+              const textEl = visualBox.querySelector('.inline-canvas-text');
+              if (textEl) {
+                const cw = DOM.canvasArea.clientWidth;
+                const ch = DOM.canvasArea.clientHeight;
+                const bW = cw * (targetEl.x2 - targetEl.x1) / 1000;
+                const bH = ch * (targetEl.y2 - targetEl.y1) / 1000;
+                const { size, scaleX, scaleY } = calcTextScale(targetEl.text, bW, bH);
+                textEl.style.fontSize = size + 'px';
+                textEl.style.transform = `scale(${scaleX},${scaleY})`;
+              }
+            }
           }
-        }
+        });
       }
-
     }
 
     function handleGlobalMouseUp() {
@@ -2041,6 +2060,11 @@
         }
       }
 
+      if (_rafId) {
+        cancelAnimationFrame(_rafId);
+        _rafId = null;
+      }
+      _rafPending = false;
       activeAction = null;
       activeDirection = null;
       currentElementId = null;
