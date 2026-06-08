@@ -245,9 +245,7 @@
 
       <!-- Scaled Workspace Draft Board -->
       <div id="canvas-wrapper" class="w-full h-full flex flex-col items-center justify-center p-16 overflow-hidden">
-        <div id="canvas-area" class="bg-slate-900 shadow-2xl relative border border-slate-800 rounded-lg">
-          <svg id="snap-overlay" class="absolute inset-0 pointer-events-none z-30" viewBox="0 0 1000 1000"></svg>
-        </div>
+        <div id="canvas-area" class="bg-slate-900 shadow-2xl relative border border-slate-800 rounded-lg"></div>
         <!-- Real-time dynamic scale monitor -->
         <div id="canvas-resolution" class="text-[10px] text-slate-500 font-mono mt-3 select-none">0 × 0px</div>
       </div>
@@ -438,34 +436,32 @@
     }
 
     function renderSnapLines() {
-      const svg = document.getElementById('snap-overlay');
-      if (!svg) return;
-      svg.innerHTML = '';
+      document.querySelectorAll('.snap-guide-line').forEach(el => el.remove());
+      const area = DOM.canvasArea;
+      if (!area) return;
       snapLines.forEach(line => {
-        const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        const guide = document.createElement('div');
+        guide.className = 'snap-guide-line absolute pointer-events-none';
+        guide.style.background = '#6366f1';
+        guide.style.opacity = '0.8';
         if (line.axis === 'x') {
-          el.setAttribute('x1', line.value);
-          el.setAttribute('y1', '0');
-          el.setAttribute('x2', line.value);
-          el.setAttribute('y2', '1000');
+          guide.style.left = `${line.value / 10}%`;
+          guide.style.top = '0';
+          guide.style.width = '1px';
+          guide.style.height = '100%';
         } else {
-          el.setAttribute('x1', '0');
-          el.setAttribute('y1', line.value);
-          el.setAttribute('x2', '1000');
-          el.setAttribute('y2', line.value);
+          guide.style.top = `${line.value / 10}%`;
+          guide.style.left = '0';
+          guide.style.width = '100%';
+          guide.style.height = '1px';
         }
-        el.setAttribute('stroke', '#6366f1');
-        el.setAttribute('stroke-width', '1');
-        el.setAttribute('stroke-dasharray', '4 3');
-        el.setAttribute('opacity', '0.8');
-        svg.appendChild(el);
+        area.appendChild(guide);
       });
     }
 
     function clearSnapLines() {
       snapLines = [];
-      const svg = document.getElementById('snap-overlay');
-      if (svg) svg.innerHTML = '';
+      document.querySelectorAll('.snap-guide-line').forEach(el => el.remove());
     }
 
     function alignElement(dir) {
@@ -1292,9 +1288,7 @@
     }
 
     function renderCanvasBoxes() {
-      const overlay = document.getElementById('snap-overlay');
       DOM.canvasArea.innerHTML = '';
-      if (overlay) DOM.canvasArea.appendChild(overlay);
 
       // Render a polished Empty State graphic when canvas contains zero active layout elements
       if (state.elements.length === 0) {
