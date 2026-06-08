@@ -102,6 +102,19 @@
           <option value="nature"> Natural Serenity</option>
           <option value="editorial"> Bold Editorial</option>
           <option value="portrait"> Portrait Studio</option>
+          <option disabled>──────────</option>
+          <option value="ig-post"> Instagram Post (1:1)</option>
+          <option value="ig-portrait"> Instagram Portrait (4:5)</option>
+          <option value="ig-story"> Instagram Story / Reels (9:16)</option>
+          <option value="twitter-post"> X / Twitter Post (16:9)</option>
+          <option value="twitter-header"> X / Twitter Header (3:1)</option>
+          <option value="fb-post"> Facebook Post (4:5)</option>
+          <option value="fb-cover"> Facebook Cover (2:1)</option>
+          <option value="linkedin-post"> LinkedIn Post (1:1)</option>
+          <option value="linkedin-banner"> LinkedIn Banner (4:1)</option>
+          <option value="yt-thumbnail"> YouTube Thumbnail (16:9)</option>
+          <option value="tiktok"> TikTok / Shorts (9:16)</option>
+          <option value="pinterest"> Pinterest Pin (2:3)</option>
         </select>
       </div>
 
@@ -111,13 +124,21 @@
       <div class="flex items-center gap-2">
         <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Ratio:</span>
         <select id="aspect-ratio-selector" class="bg-slate-900 border border-slate-800 text-slate-200 text-xs font-semibold rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500">
+          <option value="4:1">4:1 (Extra Wide)</option>
+          <option value="3:1">3:1 (Banner Wide)</option>
+          <option value="21:9">21:9 (Cinema)</option>
+          <option value="2:1">2:1 (Panorama)</option>
           <option value="16:9">16:9 (Landscape)</option>
-          <option value="9:16">9:16 (Portrait)</option>
+          <option value="16:10">16:10 (Wide Screen)</option>
+          <option value="3:2">3:2 (Classic 35mm)</option>
+          <option value="4:3">4:3 (Standard Photo)</option>
+          <option value="5:4">5:4 (Large Format)</option>
           <option value="1:1">1:1 (Square)</option>
           <option value="4:5">4:5 (Standard Tall)</option>
           <option value="3:4" selected>3:4 (Magazine)</option>
           <option value="2:3">2:3 (Book Cover)</option>
-          <option value="21:9">21:9 (Cinema)</option>
+          <option value="9:16">9:16 (Portrait)</option>
+          <option value="1:2">1:2 (Tall Portrait)</option>
           <option value="custom">Custom...</option>
         </select>
 
@@ -757,7 +778,7 @@
 
     // Aspect Ratio UI synchronization manager
     function syncAspectUI() {
-      const standardRatios = ['16:9', '9:16', '1:1', '4:5', '3:4', '2:3', '21:9'];
+      const standardRatios = ['4:1', '3:1', '21:9', '2:1', '16:9', '16:10', '3:2', '4:3', '5:4', '1:1', '4:5', '3:4', '2:3', '9:16', '1:2'];
       if (standardRatios.includes(state.aspectRatio)) {
         DOM.aspectRatioSelector.value = state.aspectRatio;
         DOM.customRatioContainer.classList.add('hidden');
@@ -957,6 +978,234 @@
             { id: generateId(), type: 'obj', text: '', desc: 'Subject head and shoulders positioned in the center, with Rembrandt lighting on the face.', y1: 150, x1: 300, y2: 650, x2: 700, color_palette: ["#D4C5A9", "#4A4A4A"] },
             { id: generateId(), type: 'obj', text: '', desc: 'Neutral earth-tone clothing on the subject lower body, falling into the bottom.', y1: 650, x1: 300, y2: 900, x2: 700, color_palette: ["#8B7355"] },
             { id: generateId(), type: 'text', text: 'PORTRAIT', desc: 'Refined serif typography in the upper left area, subtle warm tone.', y1: 60, x1: 80, y2: 120, x2: 350, color_palette: ["#8B7355"] }
+          ]
+        },
+        'ig-post': {
+          aspectRatio: '1:1',
+          highLevelDescription: 'A clean lifestyle flat lay on a warm neutral surface featuring a morning coffee setup with an artisanal ceramic mug, fresh croissant, and dried eucalyptus sprigs arranged in a balanced diagonal composition with soft window light.',
+          background: 'A warm sandy beige linen texture with subtle weave grain, softly vignetted at the edges to draw the eye to the center arrangement.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Clean lifestyle aesthetic with warm minimalism and artful curation.'},
+              {id: 'lighting', label: 'Lighting', value: 'Soft natural window light from the side with gentle diffused highlights.'},
+              {id: 'photo', label: 'Photo Style', value: 'Bright airy lifestyle photography shot on medium format with warm color grading.'},
+              {id: 'medium', label: 'Medium', value: 'Lifestyle photography'},
+            ],
+            color_palette: ["#E8D5C4", "#C4956A", "#F5F0EB", "#8B7355", "#D4C9A8"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Artisanal ceramic coffee mug with latte art, positioned in the upper left third.', y1: 100, x1: 80, y2: 350, x2: 380, color_palette: ["#C4956A", "#F5F0EB"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Buttery croissant on a small linen napkin, placed in the lower right third.', y1: 350, x1: 380, y2: 550, x2: 620, color_palette: ["#E8D5C4", "#C4956A"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Dried eucalyptus sprigs diagonally crossing from upper right to lower left.', y1: 50, x1: 450, y2: 500, x2: 100, color_palette: ["#8B7355", "#D4C9A8"] }
+          ]
+        },
+        'ig-portrait': {
+          aspectRatio: '4:5',
+          highLevelDescription: 'A striking fashion portrait with bold color-blocking — the subject wears a vibrant monochromatic outfit against a complementary colored backdrop, with dramatic side lighting creating sculptural shadows across the composition.',
+          background: 'A bold solid cyan-teal gradient backdrop with a soft radial vignette, transitioning from bright cerulean at center to deep teal at the edges.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Bold fashion-forward editorial with vibrant color blocking and confidence.'},
+              {id: 'lighting', label: 'Lighting', value: 'Dramatic single-source side lighting creating strong sculptural shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'High-contrast fashion editorial shot with saturated colors and sharp detail.'},
+              {id: 'medium', label: 'Medium', value: 'Fashion portrait photography'},
+            ],
+            color_palette: ["#06B6D4", "#EC4899", "#F5F0EB", "#1E293B"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Subject in a vibrant magenta outfit, posed in a confident stance off-center to the right.', y1: 100, x1: 350, y2: 850, x2: 650, color_palette: ["#EC4899", "#F5F0EB"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Strong diagonal shadow cast across the backdrop from the left side light.', y1: 200, x1: 0, y2: 800, x2: 400, color_palette: ["#1E293B"] }
+          ]
+        },
+        'ig-story': {
+          aspectRatio: '9:16',
+          highLevelDescription: 'A vertical cinematic story capture looking up through a canopy of blooming cherry blossoms against a soft pastel sky, with dreamy bokeh light effects and a warm golden hour glow filtering through the petals.',
+          background: 'A soft atmospheric gradient from pale pink at the top to warm golden peach at the bottom, with subtle lens flare and light leak overlays.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Dreamy romantic aesthetic with soft pastels and cinematic atmosphere.'},
+              {id: 'lighting', label: 'Lighting', value: 'Golden hour backlight with warm lens flare and soft bokeh effects.'},
+              {id: 'photo', label: 'Photo Style', value: 'Dreamy cinematic vertical shot with soft focus and warm color grading.'},
+              {id: 'medium', label: 'Medium', value: 'Cinematic mobile photography'},
+            ],
+            color_palette: ["#FDE8E0", "#F5A6B8", "#FFD4A8", "#87CEEB", "#FFFFFF"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Cherry blossom branches framing the top edges, creating a natural canopy.', y1: 0, x1: 0, y2: 450, x2: 500, color_palette: ["#F5A6B8", "#FDE8E0"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Soft glowing bokeh circles of light scattered throughout the sky area.', y1: 100, x1: 50, y2: 700, x2: 450, color_palette: ["#FFD4A8", "#FFFFFF"] },
+            { id: generateId(), type: 'text', text: 'SPRING DREAMS', desc: 'Elegant script typography overlaid in the lower third, soft white with a warm glow.', y1: 750, x1: 50, y2: 850, x2: 450, color_palette: ["#FFFFFF"] }
+          ]
+        },
+        'twitter-post': {
+          aspectRatio: '16:9',
+          highLevelDescription: 'A clean tech-inspired workspace scene with a minimalist desk setup — a slim laptop with a glowing screen displaying code or data visualization, warm desk lamp, and a small succulent, shot from a slightly elevated angle.',
+          background: 'A smooth gradient from dark slate blue at the top to warm charcoal at the bottom, with subtle geometric grid lines creating a tech-forward backdrop.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Clean tech aesthetic with minimalist composition and warm accent lighting.'},
+              {id: 'lighting', label: 'Lighting', value: 'Warm desk lamp glow combining with cool screen light for balanced contrast.'},
+              {id: 'photo', label: 'Photo Style', value: 'Clean digital photography with sharp detail and deliberate color temperature contrast.'},
+              {id: 'medium', label: 'Medium', value: 'Tech product photography'},
+            ],
+            color_palette: ["#1E293B", "#38BDF8", "#F5DEB3", "#0F172A", "#94A3B8"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Slim laptop with glowing screen displaying abstract code, center frame.', y1: 250, x1: 200, y2: 550, x2: 700, color_palette: ["#1E293B", "#38BDF8"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Warm desk lamp on the left casting a cozy glow across the workspace.', y1: 150, x1: 50, y2: 500, x2: 200, color_palette: ["#F5DEB3", "#1E293B"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Small succulent plant in a ceramic pot on the right side of the desk.', y1: 500, x1: 700, y2: 600, x2: 800, color_palette: ["#38BDF8", "#94A3B8"] }
+          ]
+        },
+        'twitter-header': {
+          aspectRatio: '3:1',
+          highLevelDescription: 'A sweeping panoramic city skyline at dusk with gradient twilight skies transitioning from deep indigo to warm coral near the horizon, scattered city lights beginning to twinkle across the urban landscape.',
+          background: 'A dramatic twilight gradient from deep purple-blue at the top through warm coral and amber at the horizon line, fading to dark silhouette at the bottom edge.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Epic urban landscape with dramatic twilight colors and atmospheric depth.'},
+              {id: 'lighting', label: 'Lighting', value: 'Twilight ambient light with warm horizon glow and emerging city lights.'},
+              {id: 'photo', label: 'Photo Style', value: 'Wide-angle cityscape photography with rich color grading and deep contrast.'},
+              {id: 'medium', label: 'Medium', value: 'Panoramic cityscape photography'},
+            ],
+            color_palette: ["#1E1B4B", "#F59E0B", "#EC4899", "#0F172A", "#2D1B69"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'City skyline silhouette stretching across the full width of the lower third.', y1: 350, x1: 0, y2: 600, x2: 1000, color_palette: ["#0F172A", "#1E1B4B"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Twilight sky with scattered clouds catching the warm coral and amber light.', y1: 0, x1: 0, y2: 400, x2: 1000, color_palette: ["#F59E0B", "#EC4899"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Tiny glowing city lights emerging across the buildings in the midground.', y1: 350, x1: 50, y2: 450, x2: 950, color_palette: ["#F59E0B", "#FFFFFF"] }
+          ]
+        },
+        'fb-post': {
+          aspectRatio: '4:5',
+          highLevelDescription: 'An inspiring travel photo of a peaceful Mediterranean coastal village at golden hour — whitewashed buildings with blue domes cascading down a hillside toward a sparkling turquoise sea, with bougainvillea framing the foreground.',
+          background: 'A warm golden gradient with soft haze over the distant sea, transitioning from pale cerulean sky to warm amber at the horizon.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Inspiring travel aesthetic with warm Mediterranean charm and vibrant colors.'},
+              {id: 'lighting', label: 'Lighting', value: 'Golden hour sunlight casting warm amber tones across white architecture.'},
+              {id: 'photo', label: 'Photo Style', value: 'Travel magazine photography with vibrant colors and inviting warmth.'},
+              {id: 'medium', label: 'Medium', value: 'Travel photography'},
+            ],
+            color_palette: ["#FFFFFF", "#1E90FF", "#FDB813", "#FF6B6B", "#2E8B57"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'White-washed buildings with blue domed roofs cascading down the hillside.', y1: 100, x1: 200, y2: 550, x2: 800, color_palette: ["#FFFFFF", "#1E90FF"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Sparkling turquoise sea in the distance filling the upper background.', y1: 0, x1: 0, y2: 250, x2: 1000, color_palette: ["#1E90FF", "#FDB813"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Vibrant bougainvillea flowers framing the left and bottom edges.', y1: 400, x1: 0, y2: 850, x2: 250, color_palette: ["#FF6B6B", "#2E8B57"] }
+          ]
+        },
+        'fb-cover': {
+          aspectRatio: '2:1',
+          highLevelDescription: 'A serene aerial drone shot of a pristine tropical beach where crystalline turquoise waves gently lap against soft white sand, with lush palm trees creating a natural frame along the shoreline and coral reefs visible beneath the clear water.',
+          background: 'A smooth gradient from pale tropical sky blue at the top through soft peach near the horizon, reflecting onto the turquoise shallows below.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Breathtaking tropical paradise with pristine natural beauty and aerial perspective.'},
+              {id: 'lighting', label: 'Lighting', value: 'Bright midday tropical sun with scattered white clouds creating soft shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'Aerial drone photography with vibrant tropical colors and crystal clarity.'},
+              {id: 'medium', label: 'Medium', value: 'Aerial landscape photography'},
+            ],
+            color_palette: ["#00BFFF", "#FFFFFF", "#90EE90", "#F4A460", "#008080"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Crystalline turquoise waves meeting white sand in a sweeping curve across the frame.', y1: 300, x1: 0, y2: 550, x2: 1000, color_palette: ["#00BFFF", "#FFFFFF"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Lush green palm trees lining the shoreline on the right side.', y1: 100, x1: 700, y2: 450, x2: 1000, color_palette: ["#90EE90", "#008080"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Coral reefs visible beneath the clear turquoise water in the foreground.', y1: 500, x1: 100, y2: 700, x2: 600, color_palette: ["#008080", "#F4A460"] }
+          ]
+        },
+        'linkedin-post': {
+          aspectRatio: '1:1',
+          highLevelDescription: 'A professional corporate workspace featuring a clean desk with a tablet displaying colorful data charts and growth graphs, a steaming coffee cup, and a small team of diverse miniature figures gathered around a laptop, symbolizing collaboration.',
+          background: 'A soft professional gradient from warm ivory at the top to subtle sage green at the bottom, conveying calm professionalism.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Professional corporate aesthetic with clean lines and purposeful composition.'},
+              {id: 'lighting', label: 'Lighting', value: 'Bright balanced overhead lighting with soft diffused shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'Clean corporate photography with sharp detail and professional polish.'},
+              {id: 'medium', label: 'Medium', value: 'Corporate business photography'},
+            ],
+            color_palette: ["#F5F5F0", "#2E8B57", "#1E3A5F", "#C4956A", "#E8E4DF"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Tablet displaying colorful growth charts and data visualization, center frame.', y1: 250, x1: 200, y2: 550, x2: 600, color_palette: ["#2E8B57", "#1E3A5F"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Steaming ceramic coffee cup on the left side of the desk.', y1: 300, x1: 50, y2: 500, x2: 180, color_palette: ["#C4956A", "#F5F5F0"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Small team figures gathered around the tablet, positioned in the lower right.', y1: 550, x1: 550, y2: 700, x2: 750, color_palette: ["#1E3A5F", "#C4956A"] }
+          ]
+        },
+        'linkedin-banner': {
+          aspectRatio: '4:1',
+          highLevelDescription: 'A wide panoramic view of a modern open-plan office space with floor-to-ceiling windows overlooking a cityscape, warm natural light streaming in, with subtle motion blur suggesting an active collaborative environment.',
+          background: 'A sophisticated gradient from warm natural light at the top through a cool blue-gray midground to warm wood tones at the bottom.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Modern corporate aesthetic with sophisticated elegance and forward-looking energy.'},
+              {id: 'lighting', label: 'Lighting', value: 'Natural daylight streaming through large windows with soft interior fill lighting.'},
+              {id: 'photo', label: 'Photo Style', value: 'Architectural interior photography with clean lines and professional finish.'},
+              {id: 'medium', label: 'Medium', value: 'Architectural corporate photography'},
+            ],
+            color_palette: ["#E8E4DF", "#94A3B8", "#1E3A5F", "#C4956A", "#F5F5F0"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Floor-to-ceiling windows spanning the full width with cityscape visible beyond.', y1: 50, x1: 0, y2: 350, x2: 1000, color_palette: ["#94A3B8", "#E8E4DF"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Modern workstations with sleek monitors arranged along the length of the office.', y1: 300, x1: 100, y2: 500, x2: 900, color_palette: ["#1E3A5F", "#F5F5F0"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Warm wood accent wall and plants in the lower foreground adding organic texture.', y1: 450, x1: 0, y2: 600, x2: 1000, color_palette: ["#C4956A"] }
+          ]
+        },
+        'yt-thumbnail': {
+          aspectRatio: '16:9',
+          highLevelDescription: 'A high-energy YouTube thumbnail composition with extreme close-up perspective — a hand reaching toward the camera with dramatic rim lighting, intense expression, and explosive particle effects in complementary orange and teal color grading.',
+          background: 'A dramatic dark gradient from deep charcoal at the edges to slightly lighter in the center, with explosive orange and teal particle bursts radiating outward.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'High-impact thumbnail aesthetic with dramatic contrast and energetic composition.'},
+              {id: 'lighting', label: 'Lighting', value: 'Dramatic rim lighting with orange and teal color contrast and hard shadows.'},
+              {id: 'photo', label: 'Photo Style', value: 'Bold high-contrast cinematic photography with punchy colors and sharp detail.'},
+              {id: 'medium', label: 'Medium', value: 'Cinematic portrait photography'},
+            ],
+            color_palette: ["#FF6B00", "#00B4D8", "#1A1A2E", "#FFFFFF", "#0F0F0F"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Reaching hand in extreme close-up from the left, with dramatic rim light.', y1: 100, x1: 0, y2: 700, x2: 400, color_palette: ["#FF6B00", "#1A1A2E"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Explosive orange particle burst emanating from behind the subject.', y1: 200, x1: 400, y2: 600, x2: 1000, color_palette: ["#FF6B00", "#00B4D8"] },
+            { id: generateId(), type: 'text', text: 'MINDBLOWING', desc: 'Bold heavy-impact sans-serif text in bright orange with subtle white stroke overlay.', y1: 600, x1: 350, y2: 700, x2: 950, color_palette: ["#FFFFFF", "#FF6B00"] }
+          ]
+        },
+        tiktok: {
+          aspectRatio: '9:16',
+          highLevelDescription: 'A vibrant vertical street-style fashion video thumbnail with neon city lights reflecting off wet pavement at night — the subject wears bold streetwear with LED accent details, colorful bokeh lights filling the background, and a dynamic low-angle perspective.',
+          background: 'A moody urban night gradient from deep purple-black at the top through vibrant magenta and cyan neon bands reflecting on wet asphalt below.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Urban street-style aesthetic with bold neon vibrancy and youthful energy.'},
+              {id: 'lighting', label: 'Lighting', value: 'Neon city lighting with colorful reflections on wet surfaces and dramatic contrast.'},
+              {id: 'photo', label: 'Photo Style', value: 'Bold street photography with neon color grading and dynamic urban energy.'},
+              {id: 'medium', label: 'Medium', value: 'Street style photography'},
+            ],
+            color_palette: ["#FF1493", "#00FFFF", "#1A0A2E", "#FFD700", "#0F0F0F"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Subject in bold streetwear with LED details, captured from a low angle in the center.', y1: 100, x1: 150, y2: 750, x2: 350, color_palette: ["#1A0A2E", "#FF1493"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Neon city lights and colorful bokeh circles scattered across the background.', y1: 0, x1: 0, y2: 500, x2: 500, color_palette: ["#FF1493", "#00FFFF"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Wet pavement with colorful neon reflections in the lower foreground.', y1: 700, x1: 0, y2: 900, x2: 500, color_palette: ["#FFD700", "#00FFFF"] },
+            { id: generateId(), type: 'text', text: 'LIT', desc: 'Urban graffiti-style text overlay in electric pink with cyan glow, upper right.', y1: 50, x1: 250, y2: 150, x2: 480, color_palette: ["#FF1493", "#00FFFF"] }
+          ]
+        },
+        pinterest: {
+          aspectRatio: '2:3',
+          highLevelDescription: 'A stunning vertical composition of a cozy reading nook by a window on a rainy day — a plush armchair draped with a soft knit blanket, steaming tea on a side table, and lush indoor plants, with rain-streaked window glass creating a moody atmospheric backdrop.',
+          background: 'A moody cool-toned gradient from soft gray-blue at the top to warm honey-amber at the bottom, with subtle rain texture overlays.',
+          styleDescription: {
+            fields: [
+              {id: 'aesthetics', label: 'Aesthetics', value: 'Cozy hygge aesthetic with warm comfort and serene atmospheric mood.'},
+              {id: 'lighting', label: 'Lighting', value: 'Soft overcast daylight filtering through rain-streaked windows with warm interior lamplight.'},
+              {id: 'photo', label: 'Photo Style', value: 'Moody lifestyle photography with cozy atmosphere and soft organic textures.'},
+              {id: 'medium', label: 'Medium', value: 'Interior lifestyle photography'},
+            ],
+            color_palette: ["#D4C5A9", "#4A6B8C", "#8B7355", "#F5E6D0", "#2D5A27"]
+          },
+          elements: [
+            { id: generateId(), type: 'obj', text: '', desc: 'Plush armchair in warm oatmeal fabric, positioned in the center-right.', y1: 250, x1: 200, y2: 700, x2: 600, color_palette: ["#D4C5A9", "#8B7355"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Rain-streaked window on the left side with soft gray-blue light filtering through.', y1: 50, x1: 0, y2: 700, x2: 300, color_palette: ["#4A6B8C", "#D4C5A9"] },
+            { id: generateId(), type: 'obj', text: '', desc: 'Lush indoor plants in woven baskets clustered in the lower left foreground.', y1: 600, x1: 0, y2: 900, x2: 250, color_palette: ["#2D5A27", "#8B7355"] }
           ]
         }
       };
