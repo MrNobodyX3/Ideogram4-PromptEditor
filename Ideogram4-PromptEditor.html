@@ -332,7 +332,7 @@
           </button>
         </div>
 
-        <input type="file" id="load-state-input" accept=".json" class="hidden">
+        <input type="file" id="load-state-input" accept=".json,.txt" class="hidden">
       </div>
     </section>
 
@@ -2389,12 +2389,26 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
+        const text = ev.target.result;
         try {
-          const data = JSON.parse(ev.target.result);
-          restoreState(data);
+          const data = JSON.parse(text);
+          if (typeof data !== 'object' || data === null) throw new Error();
+          if ('elements' in data || 'highLevelDescription' in data) {
+            restoreState(data);
+            flashBtn(DOM.loadStateBtn, '✓ Loaded');
+            return;
+          }
+          if ('high_level_description' in data || 'compositional_deconstruction' in data) {
+            restoreFromGenerated(data);
+            flashBtn(DOM.loadStateBtn, '✓ Loaded');
+            return;
+          }
+          throw new Error();
+        } catch (_) {
+          state.highLevelDescription = text;
+          DOM.hldInput.value = text;
+          renderAll(true);
           flashBtn(DOM.loadStateBtn, '✓ Loaded');
-        } catch (err) {
-          flashBtn(DOM.loadStateBtn, '✗ Invalid JSON');
         }
       };
       reader.readAsText(file);
