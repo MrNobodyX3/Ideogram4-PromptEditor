@@ -1,11 +1,9 @@
-import math
-
 class AspectRatioCalculator:
     """
     A custom node for ComfyUI that calculates width and height based on an aspect ratio and a maximum size.
     """
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "ratio_x": ("INT", {"default": 16, "min": 1, "max": 8192, "step": 1}),
@@ -23,11 +21,11 @@ class AspectRatioCalculator:
     def calculate_dimensions(self, ratio_x, ratio_y, max_size):
         if ratio_x > ratio_y:
             width = max_size
-            height = math.ceil(max_size * (ratio_y / ratio_x))
+            height = round(max_size * (ratio_y / ratio_x))
         else:
             height = max_size
-            width = math.ceil(max_size * (ratio_x / ratio_y))
-            
+            width = round(max_size * (ratio_x / ratio_y))
+
         # Ensure dimensions are divisible by 8 for compatibility with some models
         width = (width // 8) * 8
         height = (height // 8) * 8
