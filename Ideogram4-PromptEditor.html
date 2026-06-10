@@ -274,6 +274,12 @@
         <div id="canvas-area" class="bg-slate-900 shadow-2xl border border-slate-800 rounded-lg" style="position:absolute;left:0;top:0;transform-origin:0 0;"></div>
         <!-- Real-time dynamic scale monitor -->
         <div id="canvas-resolution" class="text-[10px] text-slate-500 font-mono select-none absolute bottom-3 left-1/2 -translate-x-1/2 z-10">0 × 0px</div>
+
+        <!-- Bottom center color palette tray -->
+        <div id="bottom-palette" class="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 bg-slate-900/85 backdrop-blur-sm border border-slate-700/70 rounded-xl px-3 py-1.5 shadow-xl flex items-center gap-1.5 max-w-[75%] overflow-x-auto custom-scroll pointer-events-auto">
+          <span class="text-[8px] font-bold uppercase tracking-wider text-slate-500 mr-0.5 shrink-0">Palette</span>
+          <div id="bottom-palette-container" class="flex items-center gap-1"></div>
+        </div>
       </div>
     </section>
 
@@ -1436,6 +1442,7 @@
       renderStyleFields();
       renderFormElements();
       renderCanvasBoxes();
+      renderBottomPalette();
       generateJSON();
     }
 
@@ -1458,6 +1465,56 @@
         swatch.appendChild(deleteTag);
 
         DOM.globalPaletteContainer.appendChild(swatch);
+      });
+    }
+
+    function renderBottomPalette() {
+      const container = document.getElementById('bottom-palette-container');
+      if (!container) return;
+
+      const colors = new Set();
+
+      state.styleDescription.color_palette.forEach(c => colors.add(c));
+      state.elements.forEach(el => {
+        (el.color_palette || []).forEach(c => colors.add(c));
+      });
+
+      const selectedEl = state.elements.find(el => el.id === state.selectedId);
+      const selectedColors = new Set(selectedEl?.color_palette || []);
+
+      container.innerHTML = '';
+
+      if (colors.size === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'text-[10px] text-slate-500 italic';
+        empty.textContent = 'No colors used yet';
+        container.appendChild(empty);
+        return;
+      }
+
+      colors.forEach(color => {
+        const swatch = document.createElement('div');
+        const isOnSelected = selectedColors.has(color);
+        swatch.className = `w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:scale-110 shrink-0 ${isOnSelected ? 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900' : 'ring-1 ring-white/20 hover:ring-white/40'}`;
+        swatch.style.backgroundColor = color;
+        swatch.title = color + (isOnSelected ? ' (click to remove)' : ' (click to add)');
+
+        swatch.addEventListener('click', () => {
+          if (!state.selectedId) return;
+          const el = state.elements.find(item => item.id === state.selectedId);
+          if (!el) return;
+
+          if (el.color_palette.includes(color)) {
+            el.color_palette = el.color_palette.filter(c => c !== color);
+          } else {
+            if (el.color_palette.length < 5) {
+              el.color_palette.push(color);
+            }
+          }
+          renderAll(true);
+        });
+
+        container.appendChild(swatch);
       });
     }
 
