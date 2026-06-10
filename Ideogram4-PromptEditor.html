@@ -2412,17 +2412,60 @@
         });
     }
 
+    function restoreFromGenerated(data) {
+      state.highLevelDescription = data.high_level_description || '';
+      state.background = data.compositional_deconstruction?.background || '';
+      state.elements = (data.compositional_deconstruction?.elements || []).map(el => ({
+        id: 'el_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        type: el.type || 'obj',
+        text: el.text || '',
+        desc: el.desc || '',
+        y1: el.bbox?.[0] || 0,
+        x1: el.bbox?.[1] || 0,
+        y2: el.bbox?.[2] || 500,
+        x2: el.bbox?.[3] || 500,
+        color_palette: el.color_palette || [],
+        imageUrl: ''
+      }));
+      state.selectedId = null;
+
+      if (data.style_description && typeof data.style_description === 'object') {
+        const palette = data.style_description.color_palette || [];
+        state.styleDescription.fields.forEach(f => {
+          f.value = data.style_description[f.id] || '';
+        });
+        state.styleDescription.color_palette = [...palette];
+      }
+
+      DOM.hldInput.value = state.highLevelDescription;
+      DOM.backgroundInput.value = state.background;
+      syncAspectUI();
+      resizeCanvas();
+      renderAll(true);
+    }
+
     function handlePasteState() {
       navigator.clipboard.readText()
         .then(text => {
           try {
             const data = JSON.parse(text);
             if (typeof data !== 'object' || data === null) throw new Error();
-            if (!('elements' in data) && !('highLevelDescription' in data)) throw new Error();
-            restoreState(data);
-            flashBtn(DOM.pasteStateBtn, '✓ Pasted');
-          } catch (err) {
-            flashBtn(DOM.pasteStateBtn, '✗ Invalid JSON');
+            if ('elements' in data || 'highLevelDescription' in data) {
+              restoreState(data);
+              flashBtn(DOM.pasteStateBtn, '✓ Pasted');
+              return;
+            }
+            if ('high_level_description' in data || 'compositional_deconstruction' in data) {
+              restoreFromGenerated(data);
+              flashBtn(DOM.pasteStateBtn, '✓ Pasted');
+              return;
+            }
+            throw new Error();
+          } catch (_) {
+            state.highLevelDescription = text;
+            DOM.hldInput.value = text;
+            renderAll(true);
+            flashBtn(DOM.pasteStateBtn, '✓ Prompt pasted');
           }
         })
         .catch(() => {
