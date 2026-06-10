@@ -262,13 +262,18 @@
           </div>
           <input id="align-offset-input" type="number" min="0" max="500" value="0" class="w-10 text-[10px] bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-slate-300 focus:border-indigo-500 outline-none text-center font-mono ml-1" title="Offset from canvas edge">
         </div>
+        <div class="h-4 w-px bg-slate-700"></div>
+        <button id="zoom-reset-btn" class="flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition" title="Reset zoom & pan (double-click canvas)">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+          <span id="zoom-display">100%</span>
+        </button>
       </div>
 
       <!-- Scaled Workspace Draft Board -->
-      <div id="canvas-wrapper" class="w-full h-full flex flex-col items-center justify-center p-16 overflow-hidden">
-        <div id="canvas-area" class="bg-slate-900 shadow-2xl relative border border-slate-800 rounded-lg"></div>
+      <div id="canvas-wrapper" class="w-full h-full relative overflow-hidden">
+        <div id="canvas-area" class="bg-slate-900 shadow-2xl border border-slate-800 rounded-lg" style="position:absolute;left:0;top:0;transform-origin:0 0;"></div>
         <!-- Real-time dynamic scale monitor -->
-        <div id="canvas-resolution" class="text-[10px] text-slate-500 font-mono mt-3 select-none">0 × 0px</div>
+        <div id="canvas-resolution" class="text-[10px] text-slate-500 font-mono select-none absolute bottom-3 left-1/2 -translate-x-1/2 z-10">0 × 0px</div>
       </div>
     </section>
 
@@ -344,6 +349,44 @@
       elements: [],
       selectedId: null
     };
+
+    // --- ZOOM / PAN ---
+    let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let panStartPanX = 0;
+    let panStartPanY = 0;
+
+    function applyTransform() {
+      const wrapperRect = DOM.canvasWrapper.getBoundingClientRect();
+      const w = DOM.canvasArea.offsetWidth || 1;
+      const h = DOM.canvasArea.offsetHeight || 1;
+      const centerX = (wrapperRect.width - w * zoom) / 2;
+      const centerY = (wrapperRect.height - h * zoom) / 2;
+      DOM.canvasArea.style.transform = `translate(${centerX + panX}px, ${centerY + panY}px) scale(${zoom})`;
+      updateZoomDisplay();
+    }
+
+    function updateZoomDisplay() {
+      if (DOM.zoomDisplay) {
+        DOM.zoomDisplay.textContent = `${Math.round(zoom * 100)}%`;
+      }
+      if (DOM.canvasResolution) {
+        const w = DOM.canvasArea.offsetWidth;
+        const h = DOM.canvasArea.offsetHeight;
+        DOM.canvasResolution.textContent = `${Math.round(w)} × ${Math.round(h)}px  (${state.aspectRatio})  • ${Math.round(zoom * 100)}%`;
+      }
+    }
+
+    function resetZoomPan() {
+      zoom = 1;
+      panX = 0;
+      panY = 0;
+      applyTransform();
+    }
 
     // --- SNAPPING SYSTEM ---
     const SNAP_THRESHOLD = 15;
@@ -642,6 +685,7 @@
         'align-left-btn', 'align-center-h-btn', 'align-right-btn',
         'align-top-btn', 'align-center-v-btn', 'align-bottom-btn',
         'align-offset-input',
+        'zoom-reset-btn', 'zoom-display',
         'save-state-btn', 'load-state-btn', 'copy-state-btn', 'paste-state-btn', 'load-state-input'
       ];
       
@@ -719,6 +763,65 @@
       });
 
       DOM.canvasArea.addEventListener('mousedown', handleCanvasMouseDown);
+      DOM.canvasArea.addEventListener('mousedown', (e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          isPanning = true;
+          panStartX = e.clientX;
+          panStartY = e.clientY;
+          panStartPanX = panX;
+          panStartPanY = panY;
+          DOM.canvasArea.style.cursor = 'grabbing';
+        }
+      });
+      DOM.canvasArea.addEventListener('dblclick', (e) => {
+        if (e.target === DOM.canvasArea) resetZoomPan();
+      });
+      DOM.canvasWrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.ctrlKey) {
+          // Pinch-to-zoom (Mac trackpad / Magic Mouse) — zoom centered on viewport
+          const delta = e.deltaY > 0 ? 0.92 : 1.08;
+          const newZoom = Math.max(0.1, Math.min(10, zoom * delta));
+          const wrapperRect = DOM.canvasWrapper.getBoundingClientRect();
+          const viewCx = wrapperRect.width / 2;
+          const viewCy = wrapperRect.height / 2;
+          const w = DOM.canvasArea.offsetWidth || 1;
+          const h = DOM.canvasArea.offsetHeight || 1;
+          const centerX = (wrapperRect.width - w * zoom) / 2;
+          const centerY = (wrapperRect.height - h * zoom) / 2;
+          const canvasX = (viewCx - (centerX + panX)) / zoom;
+          const canvasY = (viewCy - (centerY + panY)) / zoom;
+          zoom = newZoom;
+          const newCenterX = (wrapperRect.width - w * zoom) / 2;
+          const newCenterY = (wrapperRect.height - h * zoom) / 2;
+          panX = viewCx - newCenterX - canvasX * zoom;
+          panY = viewCy - newCenterY - canvasY * zoom;
+          applyTransform();
+        } else {
+          // Regular scroll → pan (two-finger trackpad, mouse wheel)
+          panX -= e.deltaX;
+          panY -= e.deltaY;
+          applyTransform();
+        }
+      }, { passive: false });
+
+      document.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+          panX = panStartPanX + (e.clientX - panStartX);
+          panY = panStartPanY + (e.clientY - panStartY);
+          applyTransform();
+        }
+      });
+      document.addEventListener('mouseup', (e) => {
+        if (e.button === 1 && isPanning) {
+          isPanning = false;
+          DOM.canvasArea.style.cursor = '';
+        }
+      });
+
+      DOM.zoomResetBtn.addEventListener('click', resetZoomPan);
+
       let resizeTimer;
       window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
@@ -781,10 +884,7 @@
       DOM.canvasArea.style.width = `${w}px`;
       DOM.canvasArea.style.height = `${h}px`;
 
-      // Render physical resolution specs inside view
-      if (DOM.canvasResolution) {
-        DOM.canvasResolution.textContent = `${Math.round(w)} × ${Math.round(h)}px  (${state.aspectRatio})`;
-      }
+      applyTransform();
     }
 
     // Aspect Ratio UI synchronization manager
@@ -1841,6 +1941,7 @@
 
     function handleCanvasMouseDown(e) {
       if (e.target !== DOM.canvasArea) return; 
+      if (e.button !== 0) return;
       e.preventDefault();
 
       activeAction = 'drawing';
@@ -1866,6 +1967,8 @@
       state.selectedId = newId;
       currentElementId = newId;
       initialBoxCoords = { x1: newEl.x1, y1: newEl.y1, x2: newEl.x2, y2: newEl.y2 };
+
+      renderAll();
 
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
