@@ -375,7 +375,7 @@
     };
 
     // --- UPDATE CHECK ---
-    const CURRENT_VERSION = '0.9.0';
+    const CURRENT_VERSION = '2025-06-09';
     const GITHUB_REPO = 'MrNobodyX3/Ideogram4-PromptEditor';
 
     async function checkForUpdate() {
@@ -396,7 +396,7 @@
         if (!res.ok) return;
         const release = await res.json();
         const latestTag = release.tag_name.replace(/^v/i, '');
-        if (compareVersions(latestTag, CURRENT_VERSION) > 0) {
+        if (latestTag > CURRENT_VERSION) {
           link.href = release.html_url;
           versionEl.textContent = `(v${latestTag})`;
           banner.classList.remove('hidden');
@@ -404,18 +404,6 @@
       } catch (_) {
         // silently fail
       }
-    }
-
-    function compareVersions(a, b) {
-      const pa = a.split('.').map(Number);
-      const pb = b.split('.').map(Number);
-      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-        const na = pa[i] || 0;
-        const nb = pb[i] || 0;
-        if (na > nb) return 1;
-        if (na < nb) return -1;
-      }
-      return 0;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
