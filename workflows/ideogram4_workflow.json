@@ -1,7 +1,7 @@
 {
   "id": "c0d3b8fd-fed8-4f6e-8ede-b3c70d7b6f3e",
   "revision": 0,
-  "last_node_id": 221,
+  "last_node_id": 222,
   "last_link_id": 262,
   "nodes": [
     {
@@ -64,7 +64,7 @@
         690
       ],
       "flags": {},
-      "order": 4,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
@@ -102,7 +102,7 @@
         690
       ],
       "flags": {},
-      "order": 3,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
@@ -149,6 +149,11 @@
             "name": "choice"
           },
           "link": null
+        },
+        {
+          "name": "noise_seed",
+          "type": "INT",
+          "link": 259
         }
       ],
       "outputs": [
@@ -173,10 +178,6 @@
           [
             "28",
             "value"
-          ],
-          [
-            "18",
-            "noise_seed"
           ],
           [
             "23",
@@ -250,6 +251,39 @@
         9,
         2048
       ]
+    },
+    {
+      "id": 222,
+      "type": "SeedGenerator",
+      "pos": [
+        5982.382187272945,
+        1200
+      ],
+      "size": [
+        270,
+        126
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "seed",
+          "type": "INT",
+          "links": [
+            259
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SeedGenerator"
+      },
+      "widgets_values": [
+        0,
+        "fixed",
+        ""
+      ]
     }
   ],
   "links": [
@@ -275,6 +309,14 @@
       0,
       98,
       1,
+      "INT"
+    ],
+    [
+      259,
+      222,
+      0,
+      98,
+      5,
       "INT"
     ]
   ],
