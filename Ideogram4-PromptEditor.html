@@ -33,6 +33,7 @@
     .custom-scroll::-webkit-scrollbar-thumb:hover {
       background: #334155; /* Slate-700 */
     }
+    #bottom-palette::-webkit-scrollbar { display: none; }
     /* Professional multi-directional resize handles */
     .resize-handle {
       position: absolute;
@@ -274,11 +275,15 @@
         <div id="canvas-area" class="bg-slate-900 shadow-2xl border border-slate-800 rounded-lg" style="position:absolute;left:0;top:0;transform-origin:0 0;"></div>
         <!-- Real-time dynamic scale monitor -->
         <div id="canvas-resolution" class="text-[10px] text-slate-500 font-mono select-none absolute bottom-3 left-1/2 -translate-x-1/2 z-10">0 × 0px</div>
+      </div>
 
-        <!-- Bottom center color palette tray -->
-        <div id="bottom-palette" class="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 bg-slate-900/85 backdrop-blur-sm border border-slate-700/70 rounded-xl px-3 py-1.5 shadow-xl flex items-center gap-1.5 max-w-[75%] overflow-x-auto custom-scroll pointer-events-auto">
-          <span class="text-[8px] font-bold uppercase tracking-wider text-slate-500 mr-0.5 shrink-0">Palette</span>
-          <div id="bottom-palette-container" class="flex items-center gap-1"></div>
+      <!-- Bottom center color palette tray (outside canvas-wrapper to avoid overflow clipping) -->
+      <div id="bottom-palette" class="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 bg-slate-900/85 backdrop-blur-sm border border-slate-700/70 rounded-xl px-2.5 py-2 shadow-xl flex items-center gap-1.5 pointer-events-auto w-max max-w-[90vw]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 pl-0.5">Palette</span>
+        <div id="bottom-palette-container" class="grid gap-1.5"></div>
+        <div class="relative w-6 h-6 shrink-0">
+          <span class="absolute inset-0 rounded-full border border-dashed border-slate-600 flex items-center justify-center text-xs text-slate-400 pointer-events-none leading-none">+</span>
+          <input type="color" id="bottom-palette-add" value="#6366f1" class="absolute inset-0 opacity-0 cursor-pointer border-none p-0">
         </div>
       </div>
     </section>
@@ -762,6 +767,13 @@
 
       DOM.addGlobalColorBtn.addEventListener('click', () => DOM.globalColorPicker.click());
       DOM.globalColorPicker.addEventListener('change', (e) => {
+        if (state.styleDescription.color_palette.length < 16) {
+          state.styleDescription.color_palette.push(e.target.value);
+        }
+        renderAll(true);
+      });
+
+      document.getElementById('bottom-palette-add')?.addEventListener('input', (e) => {
         if (state.styleDescription.color_palette.length < 16) {
           state.styleDescription.color_palette.push(e.target.value);
         }
@@ -1472,43 +1484,50 @@
       const container = document.getElementById('bottom-palette-container');
       if (!container) return;
 
-      const colors = new Set();
-
-      state.styleDescription.color_palette.forEach(c => colors.add(c));
-      state.elements.forEach(el => {
-        (el.color_palette || []).forEach(c => colors.add(c));
-      });
+      const seen = new Set();
+      const ordered = [];
+      state.styleDescription.color_palette.forEach(c => { if (!seen.has(c)) { seen.add(c); ordered.push(c); } });
+      state.elements.forEach(el => (el.color_palette || []).forEach(c => { if (!seen.has(c)) { seen.add(c); ordered.push(c); } }));
 
       const selectedEl = state.elements.find(el => el.id === state.selectedId);
       const selectedColors = new Set(selectedEl?.color_palette || []);
 
       container.innerHTML = '';
 
-      if (colors.size === 0) {
+      if (ordered.length === 0) {
         const empty = document.createElement('span');
-        empty.className = 'text-[10px] text-slate-500 italic';
-        empty.textContent = 'No colors used yet';
+        empty.className = 'text-[11px] text-slate-500 italic';
+        empty.textContent = state.selectedId ? 'Box selected' : 'Canvas selected';
+        container.style.gridTemplateColumns = '';
         container.appendChild(empty);
         return;
       }
 
-      colors.forEach(color => {
+      const cols = Math.min(ordered.length, 10);
+      container.style.gridTemplateColumns = `repeat(${cols}, 24px)`;
+
+      ordered.forEach(color => {
         const swatch = document.createElement('div');
         const isOnSelected = selectedColors.has(color);
-        swatch.className = `w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:scale-110 shrink-0 ${isOnSelected ? 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-900' : 'ring-1 ring-white/20 hover:ring-white/40'}`;
+        swatch.className = `w-6 h-6 rounded-full cursor-pointer transition-all duration-150 hover:scale-110 shrink-0 ${isOnSelected ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900 shadow-lg shadow-indigo-500/20' : 'ring-1 ring-white/20 hover:ring-white/50 hover:shadow-md'}`;
         swatch.style.backgroundColor = color;
         swatch.title = color + (isOnSelected ? ' (click to remove)' : ' (click to add)');
 
         swatch.addEventListener('click', () => {
-          if (!state.selectedId) return;
-          const el = state.elements.find(item => item.id === state.selectedId);
-          if (!el) return;
-
-          if (el.color_palette.includes(color)) {
-            el.color_palette = el.color_palette.filter(c => c !== color);
+          if (state.selectedId) {
+            const el = state.elements.find(item => item.id === state.selectedId);
+            if (!el) return;
+            if (el.color_palette.includes(color)) {
+              el.color_palette = el.color_palette.filter(c => c !== color);
+            } else {
+              if (el.color_palette.length < 5) el.color_palette.push(color);
+            }
           } else {
-            if (el.color_palette.length < 5) {
-              el.color_palette.push(color);
+            const palette = state.styleDescription.color_palette;
+            if (palette.includes(color)) {
+              state.styleDescription.color_palette = palette.filter(c => c !== color);
+            } else {
+              if (palette.length < 16) palette.push(color);
             }
           }
           renderAll(true);
@@ -1517,6 +1536,8 @@
         container.appendChild(swatch);
       });
     }
+
+
 
     // Renders dynamic style description fields with editable titles
     const STYLE_FIELDS = [
@@ -1984,6 +2005,8 @@
         state.activeTab = 'layers';
         syncActiveTab(false);
       }
+
+      renderBottomPalette();
     }
 
     let activeAction = null; 
