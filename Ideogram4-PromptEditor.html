@@ -427,6 +427,7 @@
     });
 
     // --- ZOOM / PAN ---
+    const isMac = navigator.platform?.toLowerCase().includes('mac');
     let zoom = 1;
     let panX = 0;
     let panY = 0;
@@ -846,7 +847,7 @@
       });
 
       DOM.canvasArea.addEventListener('mousedown', handleCanvasMouseDown);
-      DOM.canvasArea.addEventListener('mousedown', (e) => {
+      DOM.canvasWrapper.addEventListener('mousedown', (e) => {
         if (e.button === 1) {
           e.preventDefault();
           isPanning = true;
@@ -854,7 +855,7 @@
           panStartY = e.clientY;
           panStartPanX = panX;
           panStartPanY = panY;
-          DOM.canvasArea.style.cursor = 'grabbing';
+          document.body.style.cursor = 'grabbing';
         }
       });
       DOM.canvasArea.addEventListener('dblclick', (e) => {
@@ -862,8 +863,13 @@
       });
       DOM.canvasWrapper.addEventListener('wheel', (e) => {
         e.preventDefault();
-        if (e.ctrlKey) {
-          // Pinch-to-zoom (Mac trackpad / Magic Mouse) — zoom centered on viewport
+        if (isMac && !e.ctrlKey) {
+          // Mac two-finger trackpad scroll → pan
+          panX -= e.deltaX;
+          panY -= e.deltaY;
+          applyTransform();
+        } else {
+          // PC scroll or Mac pinch-to-zoom → zoom centered on viewport
           const delta = e.deltaY > 0 ? 0.92 : 1.08;
           const newZoom = Math.max(0.1, Math.min(10, zoom * delta));
           const wrapperRect = DOM.canvasWrapper.getBoundingClientRect();
@@ -881,11 +887,6 @@
           panX = viewCx - newCenterX - canvasX * zoom;
           panY = viewCy - newCenterY - canvasY * zoom;
           applyTransform();
-        } else {
-          // Regular scroll → pan (two-finger trackpad, mouse wheel)
-          panX -= e.deltaX;
-          panY -= e.deltaY;
-          applyTransform();
         }
       }, { passive: false });
 
@@ -899,7 +900,7 @@
       document.addEventListener('mouseup', (e) => {
         if (e.button === 1 && isPanning) {
           isPanning = false;
-          DOM.canvasArea.style.cursor = '';
+          document.body.style.cursor = '';
         }
       });
 
