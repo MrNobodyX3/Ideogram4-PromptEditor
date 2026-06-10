@@ -57,6 +57,35 @@
       background: linear-gradient(135deg, transparent 40%, #fff 40%, #fff 55%, transparent 55%, transparent 70%, #fff 70%, #fff 80%, transparent 80%);
       opacity: 0.8;
     }
+    /* Custom color picker range thumb */
+    #cp-hue {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      height: 12px;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+    }
+    #cp-hue::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid white;
+      background: var(--cp-hue, #f00);
+      box-shadow: 0 0 4px rgba(0,0,0,0.5);
+      cursor: pointer;
+    }
+    #cp-hue::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid white;
+      background: var(--cp-hue, #f00);
+      box-shadow: 0 0 4px rgba(0,0,0,0.5);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 flex flex-col h-screen select-none">
@@ -206,8 +235,7 @@
               <label class="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Color Palette Setup (max 16)</label>
               <div class="flex flex-wrap items-center gap-1.5">
                 <div id="global-palette-container" class="flex flex-wrap gap-1.5"></div>
-                <button id="add-global-color-btn" class="w-6 h-6 rounded-full border border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center text-slate-400 hover:text-indigo-500 transition">+</button>
-                <input type="color" id="global-color-picker">
+                <button id="add-global-color-btn" class="w-6 h-6 rounded-full border border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center text-slate-400 hover:text-indigo-500 transition shrink-0">+</button>
               </div>
             </div>
           </div>
@@ -294,10 +322,7 @@
       <div id="bottom-palette" class="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 bg-slate-900/85 backdrop-blur-sm border border-slate-700/70 rounded-xl px-2.5 py-2 shadow-xl flex items-center gap-1.5 pointer-events-auto w-max max-w-[90vw]">
         <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0 pl-0.5">Palette</span>
         <div id="bottom-palette-container" class="grid gap-1.5"></div>
-        <div class="relative w-6 h-6 shrink-0">
-          <span class="absolute inset-0 rounded-full border border-dashed border-slate-600 flex items-center justify-center text-xs text-slate-400 pointer-events-none leading-none">+</span>
-          <input type="color" id="bottom-palette-add" value="#6366f1" class="absolute inset-0 opacity-0 cursor-pointer border-none p-0">
-        </div>
+        <button id="bottom-palette-add" class="w-6 h-6 shrink-0 rounded-full border border-dashed border-slate-600 hover:border-indigo-500 flex items-center justify-center text-xs text-slate-400 hover:text-indigo-400 transition">+</button>
       </div>
     </section>
 
@@ -744,7 +769,7 @@
         'hld-input', 'background-input', 'json-output', 'copy-btn', 'minify-toggle', 
         'preset-selector', 'tab-global-btn', 'tab-layers-btn', 'tab-global-panel', 
         'tab-layers-panel', 'extended-style-section', 'style-fields-container',
-        'global-palette-container', 'global-color-picker', 'add-global-color-btn', 'undo-btn', 'redo-btn', 'canvas-resolution',
+        'global-palette-container', 'add-global-color-btn', 'undo-btn', 'redo-btn', 'canvas-resolution',
         'custom-ratio-container', 'custom-ratio-w', 'custom-ratio-h',
         'snap-toggle-btn',
         'align-left-btn', 'align-center-h-btn', 'align-right-btn',
@@ -819,19 +844,30 @@
       DOM.hldInput.addEventListener('input', () => { state.highLevelDescription = DOM.hldInput.value; debouncedSave(); });
       DOM.backgroundInput.addEventListener('input', () => { state.background = DOM.backgroundInput.value; debouncedSave(); });
 
-      DOM.addGlobalColorBtn.addEventListener('click', () => DOM.globalColorPicker.click());
-      DOM.globalColorPicker.addEventListener('change', (e) => {
-        if (state.styleDescription.color_palette.length < 16) {
-          state.styleDescription.color_palette.push(e.target.value);
-        }
-        renderAll(true);
+      DOM.addGlobalColorBtn.addEventListener('click', () => {
+        openColorPicker({
+          currentColor: '#6366f1',
+          anchorEl: DOM.addGlobalColorBtn,
+          onCommit: (color) => {
+            if (state.styleDescription.color_palette.length < 16) {
+              state.styleDescription.color_palette.push(color);
+            }
+            renderAll(true);
+          }
+        });
       });
 
-      document.getElementById('bottom-palette-add')?.addEventListener('input', (e) => {
-        if (state.styleDescription.color_palette.length < 16) {
-          state.styleDescription.color_palette.push(e.target.value);
-        }
-        renderAll(true);
+      document.getElementById('bottom-palette-add')?.addEventListener('click', (e) => {
+        openColorPicker({
+          currentColor: '#6366f1',
+          anchorEl: e.currentTarget,
+          onCommit: (color) => {
+            if (state.styleDescription.color_palette.length < 16) {
+              state.styleDescription.color_palette.push(color);
+            }
+            renderAll(true);
+          }
+        });
       });
 
       DOM.canvasArea.addEventListener('mousedown', handleCanvasMouseDown);
@@ -1512,6 +1548,184 @@
       generateJSON();
     }
 
+    let activeColorPicker = null;
+
+    function hexToHsv(hex) {
+      const r = parseInt(hex.slice(1,3), 16) / 255;
+      const g = parseInt(hex.slice(3,5), 16) / 255;
+      const b = parseInt(hex.slice(5,7), 16) / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      let h = 0;
+      if (d) {
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+        else if (max === g) h = ((b - r) / d + 2) * 60;
+        else h = ((r - g) / d + 4) * 60;
+      }
+      return { h, s: max === 0 ? 0 : d / max, v: max };
+    }
+
+    function hsvToHex(h, s, v) {
+      h = ((h % 360) + 360) % 360;
+      const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+      let r, g, b;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+      const toHex = n => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    function renderSatBrightCanvas(canvas, hue) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      const img = ctx.createImageData(w, h), d = img.data;
+      let i = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const s = x / (w - 1), v = 1 - y / (h - 1), c = v * s;
+          const hp = (hue % 360) / 60, xc = c * (1 - Math.abs((hp % 2) - 1)), m = v - c;
+          const fi = Math.floor(hp);
+          let r, g, b;
+          if (fi === 0) { r = c; g = xc; b = 0; }
+          else if (fi === 1) { r = xc; g = c; b = 0; }
+          else if (fi === 2) { r = 0; g = c; b = xc; }
+          else if (fi === 3) { r = 0; g = xc; b = c; }
+          else if (fi === 4) { r = xc; g = 0; b = c; }
+          else { r = c; g = 0; b = xc; }
+          d[i++] = Math.round((r + m) * 255);
+          d[i++] = Math.round((g + m) * 255);
+          d[i++] = Math.round((b + m) * 255);
+          d[i++] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function openColorPicker({ currentColor, onCommit, anchorEl }) {
+      if (activeColorPicker) activeColorPicker.close();
+
+      const initHsv = hexToHsv(currentColor || '#6366f1');
+      let h = initHsv.h, s = initHsv.s, v = initHsv.v;
+
+      const popover = document.createElement('div');
+      popover.className = 'fixed z-[9999] bg-slate-800 border border-slate-700/70 rounded-xl p-4 shadow-2xl shadow-black/60 w-[232px]';
+      popover.innerHTML =
+        '<div class="relative w-[200px] h-[190px] rounded-lg overflow-hidden cursor-crosshair mb-3 mx-auto">' +
+          '<canvas id="cp-sv" width="200" height="190"></canvas>' +
+          '<div id="cp-cursor" class="absolute w-3 h-3 rounded-full border-2 border-white pointer-events-none" style="box-shadow:0 0 0 1px rgba(0,0,0,.3),0 0 4px rgba(0,0,0,.5);transform:translate(-6px,-6px)"></div>' +
+        '</div>' +
+        '<input type="range" id="cp-hue" min="0" max="360" value="0" class="w-full h-3 rounded-full appearance-none cursor-pointer mb-3" style="width:200px;display:block;margin-left:auto;margin-right:auto;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)">' +
+        '<div class="flex items-center gap-2">' +
+          '<div id="cp-preview" class="w-6 h-6 rounded-md border border-slate-600 shrink-0"></div>' +
+          '<input id="cp-hex" type="text" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-xs font-mono text-slate-100 outline-none focus:border-indigo-500" spellcheck="false">' +
+          '<button id="cp-ok" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-md transition">OK</button>' +
+        '</div>';
+
+      const anchorRect = anchorEl.getBoundingClientRect();
+      let left = Math.round(anchorRect.left + anchorRect.width / 2 - 116);
+      let top = Math.round(anchorRect.bottom + 6);
+      if (left < 8) left = 8;
+      if (left + 232 > window.innerWidth - 8) left = window.innerWidth - 240;
+      if (top + 320 > window.innerHeight) top = Math.round(anchorRect.top - 326);
+      if (top < 8) top = 8;
+      popover.style.left = left + 'px';
+      popover.style.top = top + 'px';
+
+      document.body.appendChild(popover);
+
+      const canvas = popover.querySelector('#cp-sv');
+      const cursor = popover.querySelector('#cp-cursor');
+      const hueRange = popover.querySelector('#cp-hue');
+      const preview = popover.querySelector('#cp-preview');
+      const hexInput = popover.querySelector('#cp-hex');
+      const okBtn = popover.querySelector('#cp-ok');
+
+      function updateUI() {
+        const hex = hsvToHex(h, s, v);
+        preview.style.backgroundColor = hex;
+        hexInput.value = hex.toUpperCase();
+        cursor.style.left = (s * 200) + 'px';
+        cursor.style.top = ((1 - v) * 190) + 'px';
+        hueRange.value = h;
+        hueRange.style.setProperty('--cp-hue', hex);
+        renderSatBrightCanvas(canvas, h);
+      }
+
+      function handleSVMouse(ev) {
+        const rect = canvas.getBoundingClientRect();
+        s = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+        v = Math.max(0, Math.min(1, 1 - (ev.clientY - rect.top) / rect.height));
+        updateUI();
+      }
+
+      function handleSVStart(ev) {
+        ev.preventDefault();
+        handleSVMouse(ev);
+        const onMove = (e) => { e.preventDefault(); handleSVMouse(e); };
+        const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      }
+
+      const listeners = [];
+
+      function addListeners() {
+        canvas.addEventListener('mousedown', handleSVStart);
+        listeners.push({ el: canvas, type: 'mousedown', fn: handleSVStart });
+
+        const onHueInput = () => { h = parseFloat(hueRange.value); updateUI(); };
+        hueRange.addEventListener('input', onHueInput);
+        listeners.push({ el: hueRange, type: 'input', fn: onHueInput });
+
+        const onHexInput = () => {
+          const val = hexInput.value.trim();
+          if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+            const hsv = hexToHsv(val);
+            h = hsv.h; s = hsv.s; v = hsv.v;
+            updateUI();
+          }
+        };
+        hexInput.addEventListener('input', onHexInput);
+        listeners.push({ el: hexInput, type: 'input', fn: onHexInput });
+
+        const onOk = () => {
+          onCommit(hsvToHex(h, s, v));
+          close();
+        };
+        okBtn.addEventListener('click', onOk);
+        listeners.push({ el: okBtn, type: 'click', fn: onOk });
+      }
+
+      function removeListeners() {
+        listeners.forEach(l => l.el.removeEventListener(l.type, l.fn));
+        listeners.length = 0;
+      }
+
+      function close() {
+        removeListeners();
+        document.removeEventListener('keydown', onKeyDown);
+        document.removeEventListener('mousedown', onClickOutside);
+        popover.remove();
+        if (activeColorPicker === pickerHandle) activeColorPicker = null;
+      }
+
+      addListeners();
+
+      const onKeyDown = (ev) => { if (ev.key === 'Escape') close(); };
+      document.addEventListener('keydown', onKeyDown);
+
+      const onClickOutside = (ev) => { if (!popover.contains(ev.target)) close(); };
+      requestAnimationFrame(() => { document.addEventListener('mousedown', onClickOutside); });
+
+      updateUI();
+
+      const pickerHandle = { close };
+      activeColorPicker = pickerHandle;
+    }
+
     function renderGlobalPalette() {
       DOM.globalPaletteContainer.innerHTML = '';
       state.styleDescription.color_palette.forEach((color, idx) => {
@@ -1520,14 +1734,32 @@
         swatch.style.backgroundColor = color;
         swatch.title = color;
 
-        swatch.onclick = () => {
-          state.styleDescription.color_palette.splice(idx, 1);
-          renderAll(true);
+        swatch.onclick = (ev) => {
+          ev.stopPropagation();
+          openColorPicker({
+            currentColor: color,
+            anchorEl: ev.currentTarget,
+            onCommit: (newColor) => {
+              const oldColor = state.styleDescription.color_palette[idx];
+              state.styleDescription.color_palette[idx] = newColor;
+              state.elements.forEach(el => {
+                if (el.color_palette) {
+                  el.color_palette = el.color_palette.map(c => c === oldColor ? newColor : c);
+                }
+              });
+              renderAll(true);
+            }
+          });
         };
 
         const deleteTag = document.createElement('div');
         deleteTag.className = 'absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity';
         deleteTag.textContent = '×';
+        deleteTag.onclick = (e) => {
+          e.stopPropagation();
+          state.styleDescription.color_palette.splice(idx, 1);
+          renderAll(true);
+        };
         swatch.appendChild(deleteTag);
 
         DOM.globalPaletteContainer.appendChild(swatch);
@@ -1561,11 +1793,41 @@
       container.style.gridTemplateColumns = `repeat(${cols}, 24px)`;
 
       ordered.forEach(color => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative group shrink-0';
+
         const swatch = document.createElement('div');
         const isOnSelected = selectedColors.has(color);
         swatch.className = `w-6 h-6 rounded-full cursor-pointer transition-all duration-150 hover:scale-110 shrink-0 ${isOnSelected ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900 shadow-lg shadow-indigo-500/20' : 'ring-1 ring-white/20 hover:ring-white/50 hover:shadow-md'}`;
         swatch.style.backgroundColor = color;
         swatch.title = color + (isOnSelected ? ' (click to remove)' : ' (click to add)');
+
+        function editColor() {
+          openColorPicker({
+            currentColor: color,
+            anchorEl: swatch,
+            onCommit: (newColor) => {
+              if (newColor === color) return;
+              state.styleDescription.color_palette = state.styleDescription.color_palette.map(c => c === color ? newColor : c);
+              state.elements.forEach(el => {
+                if (el.color_palette) {
+                  el.color_palette = el.color_palette.map(c => c === color ? newColor : c);
+                }
+              });
+              renderAll(true);
+            }
+          });
+        }
+
+        function deleteColor() {
+          state.styleDescription.color_palette = state.styleDescription.color_palette.filter(c => c !== color);
+          state.elements.forEach(el => {
+            if (el.color_palette) {
+              el.color_palette = el.color_palette.filter(c => c !== color);
+            }
+          });
+          renderAll(true);
+        }
 
         swatch.addEventListener('click', () => {
           if (state.selectedId) {
@@ -1577,17 +1839,22 @@
               if (el.color_palette.length < 5) el.color_palette.push(color);
             }
           } else {
-            const palette = state.styleDescription.color_palette;
-            if (palette.includes(color)) {
-              state.styleDescription.color_palette = palette.filter(c => c !== color);
-            } else {
-              if (palette.length < 16) palette.push(color);
-            }
+            editColor();
+            return;
           }
           renderAll(true);
         });
 
-        container.appendChild(swatch);
+        swatch.addEventListener('contextmenu', (ev) => { ev.preventDefault(); editColor(); });
+
+        const deleteTag = document.createElement('div');
+        deleteTag.className = 'absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10';
+        deleteTag.textContent = '×';
+        deleteTag.onclick = (e) => { e.stopPropagation(); deleteColor(); };
+
+        wrapper.appendChild(swatch);
+        wrapper.appendChild(deleteTag);
+        container.appendChild(wrapper);
       });
     }
 
@@ -1682,10 +1949,7 @@
             <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500 mb-1">Layer Color Swatches</label>
             <div class="flex flex-wrap items-center gap-1.5">
               <div class="element-swatches-container flex flex-wrap gap-1.5"></div>
-              <div class="relative w-5 h-5">
-                <span class="absolute inset-0 rounded-full border border-dashed border-slate-700 flex items-center justify-center text-xs text-slate-400 pointer-events-none">+</span>
-                <input type="color" class="layer-color-picker" style="position:absolute;inset:0;opacity:0;cursor:pointer;border:none;padding:0" value="#6366f1">
-              </div>
+              <button class="layer-color-picker w-5 h-5 rounded-full border border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center text-xs text-slate-400 hover:text-indigo-400 transition">+</button>
             </div>
           </div>
         `;
@@ -1821,23 +2085,41 @@
           
           circle.onclick = (ev) => {
             ev.stopPropagation();
-            el.color_palette.splice(idx, 1);
-            renderAll();
+            openColorPicker({
+              currentColor: color,
+              anchorEl: ev.currentTarget,
+              onCommit: (newColor) => {
+                el.color_palette[idx] = newColor;
+                renderAll();
+              }
+            });
           };
 
           const delBadge = document.createElement('div');
           delBadge.className = 'absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 flex items-center justify-center text-[7px] font-bold opacity-0 group-hover:opacity-100 transition-opacity';
           delBadge.textContent = '×';
+          delBadge.onclick = (ev) => {
+            ev.stopPropagation();
+            el.color_palette.splice(idx, 1);
+            renderAll();
+          };
           circle.appendChild(delBadge);
 
           swatchesContainer.appendChild(circle);
         });
 
-        colorPickerIn.addEventListener('change', () => {
-          if (el.color_palette.length < 5) {
-            el.color_palette.push(colorPickerIn.value);
-          }
-          renderAll();
+        colorPickerIn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          openColorPicker({
+            currentColor: '#6366f1',
+            anchorEl: ev.currentTarget,
+            onCommit: (color) => {
+              if (el.color_palette.length < 5) {
+                el.color_palette.push(color);
+              }
+              renderAll();
+            }
+          });
         });
 
         DOM.elementsList.appendChild(card);
@@ -1947,31 +2229,40 @@
           colorRow.className = 'flex items-center gap-1.5';
           (el.color_palette || []).forEach((color, idx) => {
             const dot = document.createElement('div');
-            dot.className = 'w-3 h-3 rounded-full border border-white/20 shadow-sm cursor-pointer hover:ring-1 hover:ring-red-400/60 transition';
+            dot.className = 'w-3 h-3 rounded-full border border-white/20 shadow-sm cursor-pointer hover:ring-1 hover:ring-indigo-400/60 transition';
             dot.style.backgroundColor = color;
             dot.addEventListener('mousedown', (ev) => {
               ev.stopPropagation();
-              el.color_palette.splice(idx, 1);
-              renderAll(true);
+              openColorPicker({
+                currentColor: color,
+                anchorEl: ev.currentTarget,
+                onCommit: (newColor) => {
+                  el.color_palette[idx] = newColor;
+                  renderAll(true);
+                }
+              });
             });
             colorRow.appendChild(dot);
           });
           if ((el.color_palette || []).length < 5) {
-            const addWrap = document.createElement('div');
-            addWrap.className = 'relative w-3.5 h-3.5';
-            addWrap.innerHTML = '<span class="absolute inset-0 rounded-full border border-dashed border-slate-600 flex items-center justify-center text-[7px] text-slate-400 pointer-events-none">+</span>';
-            const colorInput = document.createElement('input');
-            colorInput.type = 'color';
-            colorInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;border:none;padding:0';
-            colorInput.addEventListener('mousedown', (ev) => { ev.stopPropagation(); });
-            colorInput.addEventListener('change', () => {
-              if (el.color_palette.length < 5) {
-                el.color_palette.push(colorInput.value);
-                renderAll(true);
-              }
+            const addBtn = document.createElement('button');
+            addBtn.className = 'w-3.5 h-3.5 rounded-full border border-dashed border-slate-600 hover:border-indigo-500 flex items-center justify-center text-[7px] text-slate-400 hover:text-indigo-400 transition cursor-pointer';
+            addBtn.textContent = '+';
+            addBtn.addEventListener('mousedown', (ev) => { ev.stopPropagation(); });
+            addBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              openColorPicker({
+                currentColor: '#6366f1',
+                anchorEl: ev.currentTarget,
+                onCommit: (color) => {
+                  if (el.color_palette.length < 5) {
+                    el.color_palette.push(color);
+                  }
+                  renderAll(true);
+                }
+              });
             });
-            addWrap.appendChild(colorInput);
-            colorRow.appendChild(addWrap);
+            colorRow.appendChild(addBtn);
           }
           inlineForm.appendChild(colorRow);
 
