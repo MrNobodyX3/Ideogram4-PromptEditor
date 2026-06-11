@@ -336,6 +336,30 @@
             <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Background Details</label>
             <textarea id="background-input" rows="3" class="w-full text-xs bg-slate-950 border border-slate-800 text-slate-100 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition leading-relaxed placeholder-slate-600" placeholder="Finished texture and details of background shell..."></textarea>
           </div>
+
+          <!-- Canvas Background Image (visual reference) -->
+          <div class="border-t border-slate-800 pt-4">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Canvas Background Image <span class="text-slate-500 font-normal normal-case">(visual ref)</span></label>
+            <div class="flex items-center gap-1 mb-1.5">
+              <input type="text" id="canvas-bg-url-input" class="flex-1 text-xs bg-slate-950 border border-slate-800 text-slate-100 rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500 transition placeholder-slate-600" placeholder="Paste image URL...">
+              <button id="canvas-bg-url-set" class="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition shrink-0">Set</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="flex items-center gap-1.5 cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                Upload
+                <input type="file" id="canvas-bg-file-input" accept="image/*" class="hidden">
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer text-[10px] text-slate-400 select-none">
+                <input type="checkbox" id="canvas-bg-toggle" checked class="rounded border-slate-800 text-indigo-600 focus:ring-indigo-500 bg-slate-900">
+                Show
+              </label>
+              <button id="canvas-bg-clear" class="text-[10px] text-red-400 hover:text-red-300 font-bold transition ml-auto">Clear</button>
+            </div>
+            <div id="canvas-bg-preview" class="mt-1.5 rounded-lg overflow-hidden border border-slate-700 bg-slate-950 hidden" style="max-height:100px">
+              <img id="canvas-bg-preview-img" class="w-full h-full object-contain" src="" alt="canvas background preview">
+            </div>
+          </div>
         </div>
 
         <!-- Tab 2: Elements Lists Panel -->
@@ -367,6 +391,10 @@
         <button id="canvas-add-btn" class="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:text-white hover:bg-slate-800 rounded-md transition">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           Layer
+        </button>
+        <button id="canvas-bg-btn" class="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:text-white hover:bg-slate-800 rounded-md transition" title="Set canvas background image">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"/></svg>
+          BG
         </button>
         <div class="h-4 w-px bg-slate-700"></div>
         <button id="snap-toggle-btn" class="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition" title="Toggle snap to grid">
@@ -492,8 +520,10 @@
         color_palette: []
       },
       background: '',
+      canvasBackgroundImage: '',
       elements: [],
-      selectedId: null
+      selectedId: null,
+      selectedIds: []
     };
 
     // --- UPDATE CHECK ---
@@ -587,11 +617,12 @@
     let snapEnabled = true;
     let snapLines = [];
 
-    function getSnapCandidates(excludeId) {
+    function getSnapCandidates(excludeIds) {
+      const ids = new Set(Array.isArray(excludeIds) ? excludeIds : [excludeIds]);
       const xCands = new Set([0, 500, 1000]);
       const yCands = new Set([0, 500, 1000]);
       state.elements.forEach(el => {
-        if (el.id === excludeId) return;
+        if (ids.has(el.id)) return;
         xCands.add(el.x1);
         xCands.add(el.x2);
         xCands.add(Math.round((el.x1 + el.x2) / 2));
@@ -632,7 +663,7 @@
       if (!snapEnabled) return { x1, y1, x2, y2 };
 
       snapLines = [];
-      const candidates = getSnapCandidates(activeId);
+      const candidates = getSnapCandidates(state.selectedIds.length > 1 ? state.selectedIds : activeId);
       const cx = Math.round((x1 + x2) / 2);
       const cy = Math.round((y1 + y2) / 2);
 
@@ -739,27 +770,30 @@
     }
 
     function alignElement(dir) {
-      const el = state.elements.find(item => item.id === state.selectedId);
-      if (!el) return;
+      const selected = state.elements.filter(item => state.selectedIds.includes(item.id));
+      if (selected.length === 0) return;
 
-      const width = el.x2 - el.x1;
-      const height = el.y2 - el.y1;
       const offset = Math.max(0, Math.min(500, parseInt(DOM.alignOffsetInput.value, 10) || 0));
 
-      switch (dir) {
-        case 'left':
-          el.x1 = offset; el.x2 = offset + width; break;
-        case 'center-h':
-          el.x1 = Math.round((1000 - width) / 2); el.x2 = el.x1 + width; break;
-        case 'right':
-          el.x1 = 1000 - offset - width; el.x2 = 1000 - offset; break;
-        case 'top':
-          el.y1 = offset; el.y2 = offset + height; break;
-        case 'center-v':
-          el.y1 = Math.round((1000 - height) / 2); el.y2 = el.y1 + height; break;
-        case 'bottom':
-          el.y1 = 1000 - offset - height; el.y2 = 1000 - offset; break;
-      }
+      selected.forEach(el => {
+        const width = el.x2 - el.x1;
+        const height = el.y2 - el.y1;
+
+        switch (dir) {
+          case 'left':
+            el.x1 = offset; el.x2 = offset + width; break;
+          case 'center-h':
+            el.x1 = Math.round((1000 - width) / 2); el.x2 = el.x1 + width; break;
+          case 'right':
+            el.x1 = 1000 - offset - width; el.x2 = 1000 - offset; break;
+          case 'top':
+            el.y1 = offset; el.y2 = offset + height; break;
+          case 'center-v':
+            el.y1 = Math.round((1000 - height) / 2); el.y2 = el.y1 + height; break;
+          case 'bottom':
+            el.y1 = 1000 - offset - height; el.y2 = 1000 - offset; break;
+        }
+      });
 
       renderAll(true);
     }
@@ -781,8 +815,10 @@
           highLevelDescription: state.highLevelDescription,
           styleDescription: state.styleDescription,
           background: state.background,
+          canvasBackgroundImage: state.canvasBackgroundImage,
           elements: state.elements,
           selectedId: state.selectedId,
+          selectedIds: state.selectedIds,
           groupNames: _groupNames,
           collapsedGroups: Array.from(_collapsedGroups)
         }));
@@ -809,8 +845,10 @@
         state.highLevelDescription = snap.highLevelDescription;
         state.styleDescription = JSON.parse(JSON.stringify(snap.styleDescription));
         state.background = snap.background;
+        state.canvasBackgroundImage = snap.canvasBackgroundImage || '';
         state.elements = JSON.parse(JSON.stringify(snap.elements));
         state.selectedId = snap.selectedId;
+        state.selectedIds = snap.selectedIds || [];
         _groupNames = snap.groupNames || {};
         _collapsedGroups = new Set(snap.collapsedGroups || []);
 
@@ -895,7 +933,9 @@
         'align-top-btn', 'align-center-v-btn', 'align-bottom-btn',
         'align-offset-input',
         'zoom-reset-btn', 'zoom-display',
-        'save-state-btn', 'load-state-btn', 'copy-state-btn', 'paste-state-btn', 'load-state-input'
+        'save-state-btn', 'load-state-btn', 'copy-state-btn', 'paste-state-btn', 'load-state-input',
+        'canvas-bg-url-input', 'canvas-bg-url-set', 'canvas-bg-file-input', 'canvas-bg-clear',
+        'canvas-bg-toggle', 'canvas-bg-preview', 'canvas-bg-preview-img', 'canvas-bg-btn'
       ];
       
       elementsToCache.forEach(id => {
@@ -957,6 +997,35 @@
 
       DOM.hldInput.addEventListener('input', () => { state.highLevelDescription = DOM.hldInput.value; debouncedSave(); });
       DOM.backgroundInput.addEventListener('input', () => { state.background = DOM.backgroundInput.value; debouncedSave(); });
+
+      // Canvas background image handlers
+      DOM.canvasBgUrlSet.addEventListener('click', () => {
+        setCanvasBackground(DOM.canvasBgUrlInput.value.trim());
+      });
+      DOM.canvasBgUrlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          setCanvasBackground(DOM.canvasBgUrlInput.value.trim());
+        }
+      });
+      DOM.canvasBgFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => setCanvasBackground(ev.target.result);
+        reader.readAsDataURL(file);
+        DOM.canvasBgFileInput.value = '';
+      });
+      DOM.canvasBgClear.addEventListener('click', clearCanvasBackground);
+      DOM.canvasBgToggle.addEventListener('change', () => {
+        renderCanvasBackground();
+        debouncedSave();
+      });
+      DOM.canvasBgBtn.addEventListener('click', () => {
+        state.activeTab = 'global';
+        syncActiveTab(false);
+        DOM.canvasBgUrlInput.focus();
+      });
 
       DOM.addGlobalColorBtn.addEventListener('click', () => {
         openColorPicker({
@@ -1216,6 +1285,7 @@
       if (selection === 'clean') {
         state.highLevelDescription = '';
         state.background = '';
+        state.canvasBackgroundImage = '';
         state.styleDescription = {
           fields: [
             {id: 'aesthetics', label: 'Aesthetics', value: ''},
@@ -1228,6 +1298,7 @@
         };
         state.elements = [];
         state.selectedId = null;
+        state.selectedIds = [];
         _groupNames = {};
         _collapsedGroups = new Set();
 
@@ -1635,6 +1706,7 @@
       state.styleDescription = JSON.parse(JSON.stringify(preset.styleDescription));
       state.elements = preset.elements.map(el => normalizeElement({ ...el, id: generateId() }));
       state.selectedId = null;
+      state.selectedIds = [];
 
       state.highLevelDescription = preset.highLevelDescription;
       state.background = preset.background;
@@ -1667,14 +1739,15 @@
         return; // Allow native text operations to execute
       }
 
-      if (isDelete && state.selectedId) {
+      if (isDelete && state.selectedIds.length > 0) {
         e.preventDefault();
-        state.elements = state.elements.filter(item => item.id !== state.selectedId);
+        state.elements = state.elements.filter(item => !state.selectedIds.includes(item.id));
         state.selectedId = null;
+        state.selectedIds = [];
         renderAll(true);
-      } else if (hasMetaOrCtrl && e.key.toLowerCase() === 'd' && state.selectedId) {
+      } else if (hasMetaOrCtrl && e.key.toLowerCase() === 'd' && state.selectedIds.length > 0) {
         e.preventDefault();
-        handleDuplicateElement(state.selectedId);
+        handleDuplicateElement(state.selectedIds);
       } else if (hasMetaOrCtrl && isZ) {
         e.preventDefault();
         if (e.shiftKey) {
@@ -1736,26 +1809,35 @@
       };
       state.elements.push(newEl);
       state.selectedId = newEl.id;
+      state.selectedIds = [newEl.id];
       
       state.activeTab = 'layers';
       syncActiveTab(false);
       renderAll(true);
     }
 
-    function handleDuplicateElement(id) {
-      const src = state.elements.find(el => el.id === id);
-      if (!src) return;
-      const copy = JSON.parse(JSON.stringify(src));
-      copy.id = generateId();
-      const origW = copy.x2 - copy.x1;
-      const origH = copy.y2 - copy.y1;
-      const offset = 20;
-      copy.x1 = Math.min(1000 - origW, copy.x1 + offset);
-      copy.x2 = Math.min(1000, copy.x2 + offset);
-      copy.y1 = Math.min(1000 - origH, copy.y1 + offset);
-      copy.y2 = Math.min(1000, copy.y2 + offset);
-      state.elements.push(copy);
-      state.selectedId = copy.id;
+    function handleDuplicateElement(ids) {
+      const srcIds = Array.isArray(ids) ? ids : [ids];
+      if (srcIds.length === 0) return;
+      const copies = [];
+      srcIds.forEach(id => {
+        const src = state.elements.find(el => el.id === id);
+        if (!src) return;
+        const copy = JSON.parse(JSON.stringify(src));
+        copy.id = generateId();
+        const origW = copy.x2 - copy.x1;
+        const origH = copy.y2 - copy.y1;
+        const offset = 20;
+        copy.x1 = Math.min(1000 - origW, copy.x1 + offset);
+        copy.x2 = Math.min(1000, copy.x2 + offset);
+        copy.y1 = Math.min(1000 - origH, copy.y1 + offset);
+        copy.y2 = Math.min(1000, copy.y2 + offset);
+        copies.push(copy);
+      });
+      if (copies.length === 0) return;
+      copies.forEach(c => state.elements.push(c));
+      state.selectedId = copies[copies.length - 1].id;
+      state.selectedIds = copies.map(c => c.id);
       renderAll(true);
     }
 
@@ -1773,6 +1855,7 @@
       renderStyleFields();
       renderFormElements();
       renderCanvasBoxes();
+      renderCanvasBackground();
       renderBottomPalette();
       generateJSON();
     }
@@ -2282,6 +2365,7 @@
 
           const groupName = _groupNames[groupId] || `Group ${groupId.replace('group_', '').slice(0, 6)}`;
           const isCollapsed = _collapsedGroups.has(groupId);
+          const anyHidden = groupMembers.some(m => m.hidden);
 
           const groupEl = document.createElement('div');
           groupEl.className = 'mb-2';
@@ -2309,6 +2393,12 @@
             <span class="text-[10px] text-slate-400 transition ${isCollapsed ? '' : 'rotate-90'}">▸</span>
             <input class="group-name-input flex-1 bg-transparent text-[11px] font-bold text-slate-200 outline-none border-b border-transparent focus:border-indigo-500 transition" value="${htmlEncode(groupName)}" spellcheck="false">
             <span class="text-[9px] text-slate-500 font-mono">${groupMembers.length}</span>
+            <button class="group-hide-btn transition p-0.5 ${anyHidden ? 'text-amber-400' : 'text-slate-500 hover:text-amber-400'}" title="${anyHidden ? 'Show all' : 'Hide all'}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">${anyHidden
+                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>'
+                : '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'}
+              </svg>
+            </button>
             <button class="ungroup-all-btn text-slate-500 hover:text-red-400 transition p-0.5" title="Ungroup all">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h4l2-2m-8 2H5m6 8h4l2 2m-8-2H5m-2-4h14M5 12h14"/></svg>
             </button>
@@ -2317,7 +2407,7 @@
           const nameInput = header.querySelector('.group-name-input');
 
           header.addEventListener('click', (e) => {
-            if (e.target === nameInput || e.target.closest('.ungroup-all-btn')) return;
+            if (e.target === nameInput || e.target.closest('.ungroup-all-btn') || e.target.closest('.group-hide-btn')) return;
             if (_collapsedGroups.has(groupId)) {
               _collapsedGroups.delete(groupId);
             } else {
@@ -2334,6 +2424,11 @@
           header.querySelector('.ungroup-all-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             ungroupAll(groupId);
+          });
+
+          header.querySelector('.group-hide-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleGroupVisibility(groupId);
           });
 
           groupEl.appendChild(header);
@@ -2359,8 +2454,8 @@
     }
 
     function groupSelectedElements() {
-      const selected = state.elements.filter(el => el.id === state.selectedId);
-      if (selected.length === 0) return;
+      const selected = state.elements.filter(el => state.selectedIds.includes(el.id));
+      if (selected.length < 2) return;
       const groupId = 'group_' + Date.now();
       const firstName = selected[0].desc.slice(0, 20) || 'Group';
       _groupNames[groupId] = firstName;
@@ -2384,8 +2479,15 @@
       renderAll(true);
     }
 
+    function toggleGroupVisibility(groupId) {
+      const members = state.elements.filter(el => el.group === groupId);
+      const anyHidden = members.some(m => m.hidden);
+      members.forEach(m => { m.hidden = !anyHidden; });
+      renderAll(true);
+    }
+
     function renderElementCard(el, groupId, appendTo) {
-      const isSelected = el.id === state.selectedId;
+      const isSelected = state.selectedIds.includes(el.id);
       const card = document.createElement('div');
       const cardBorderColor = el.visualColor ? el.visualColor : (isSelected ? '#6366f1' : '#334155');
       card.className = `relative p-4 rounded-xl border transition ${isSelected ? 'bg-indigo-500/10 ring-1 ring-indigo-500' : 'bg-slate-950/50'} ${el.hidden ? 'element-hidden' : ''}`;
@@ -2468,7 +2570,7 @@
       card.appendChild(body);
 
       // --- Event handlers ---
-      card.addEventListener('click', () => selectElement(el.id));
+      card.addEventListener('click', (e) => selectElement(el.id, e.shiftKey));
 
       card.querySelector('.type-obj-btn').addEventListener('click', (e) => {
         e.stopPropagation(); el.type = 'obj'; renderAll();
@@ -2564,15 +2666,21 @@
       // Delete
       card.querySelector('.delete-btn').addEventListener('click', (e) => {
         e.stopPropagation();
-        state.elements = state.elements.filter(item => item.id !== el.id);
-        if (state.selectedId === el.id) state.selectedId = null;
+        if (state.selectedIds.length > 1 && state.selectedIds.includes(el.id)) {
+          state.elements = state.elements.filter(item => !state.selectedIds.includes(item.id));
+        } else {
+          state.elements = state.elements.filter(item => item.id !== el.id);
+        }
+        state.selectedId = null;
+        state.selectedIds = [];
         renderAll();
       });
 
       // Duplicate
       card.querySelector('.duplicate-btn').addEventListener('click', (e) => {
         e.stopPropagation();
-        handleDuplicateElement(el.id);
+        const idsToDup = state.selectedIds.length > 1 ? state.selectedIds : [el.id];
+        handleDuplicateElement(idsToDup);
       });
 
       // Hide/Show toggle
@@ -2710,6 +2818,7 @@
       }
 
       state.selectedId = moved.id;
+      state.selectedIds = [moved.id];
     }
 
     function handleReorderGroup(groupId, targetEl, insertAfter) {
@@ -2763,6 +2872,7 @@
       // Re-insert the group block
       state.elements.splice(insertIdx, 0, ...groupElements);
       state.selectedId = groupElements[0].id;
+      state.selectedIds = [groupElements[0].id];
     }
 
     function mergeGroups(sourceGroupId, targetGroupId, targetEl, insertAfter) {
@@ -2812,6 +2922,7 @@
 
       state.elements.splice(insertIdx, 0, ...sourceElements);
       state.selectedId = sourceElements[0].id;
+      state.selectedIds = [sourceElements[0].id];
     }
 
     function renderCanvasBoxes() {
@@ -2834,11 +2945,12 @@
 
       state.elements.forEach(el => {
         if (el.hidden) return;
-        const isSelected = el.id === state.selectedId;
+        const isSelected = state.selectedIds.includes(el.id);
+        const isPrimary = el.id === state.selectedId;
         const box = document.createElement('div');
         box.id = `box-${el.id}`;
         const borderColor = el.visualColor ? el.visualColor : (isSelected ? '#6366f1' : '#334155');
-        box.className = `absolute border ${isSelected ? 'z-20 shadow-lg' : 'z-10'}`;
+        box.className = `absolute border ${isSelected ? 'z-20 shadow-lg ring-1 ring-indigo-500/40' : 'z-10'}`;
         box.style.borderColor = borderColor;
         box.style.backgroundColor = isSelected ? `${borderColor}18` : 'rgba(15, 23, 42, 0.25)';
         
@@ -2966,7 +3078,7 @@
           if (descIn) {
             descIn.addEventListener('mousedown', (ev) => {
               ev.stopPropagation();
-              selectElement(el.id);
+              selectElement(el.id, ev.shiftKey);
             });
             descIn.addEventListener('input', (e) => {
               el.desc = e.target.value;
@@ -2979,8 +3091,8 @@
           box.appendChild(inlineForm);
         }
 
-        if (isSelected) {
-          ['n','s','e','w','nw','ne','se','sw'].forEach(dir => {
+        if (isPrimary) {
+          ['n','s','e','w','nw','ne','sw','se'].forEach(dir => {
             const rh = document.createElement('div');
             rh.className = `resize-handle resize-handle-${dir}`;
             rh.dataset.dir = dir;
@@ -2991,6 +3103,10 @@
 
         box.addEventListener('mousedown', (e) => {
           if (e.target.closest('.resize-handle')) return;
+          if (e.shiftKey) {
+            selectElement(el.id, true);
+            return;
+          }
           handleDragMouseDown(e, el.id);
         });
 
@@ -2998,10 +3114,30 @@
       });
     }
 
-    function selectElement(id) {
+    function selectElement(id, shiftKey = false) {
+      if (shiftKey) {
+        const idx = state.selectedIds.indexOf(id);
+        if (idx >= 0) {
+          state.selectedIds.splice(idx, 1);
+          if (state.selectedId === id) {
+            state.selectedId = state.selectedIds.length > 0 ? state.selectedIds[state.selectedIds.length - 1] : null;
+          }
+        } else {
+          state.selectedIds.push(id);
+          state.selectedId = id;
+        }
+        renderAll(true);
+        if (state.selectedId && state.activeTab !== 'layers') {
+          state.activeTab = 'layers';
+          syncActiveTab(false);
+        }
+        return;
+      }
+
       if (state.selectedId === id) return;
       const prevId = state.selectedId;
       state.selectedId = id;
+      state.selectedIds = [id];
 
       // Toggle previous selection off
       if (prevId) {
@@ -3031,7 +3167,7 @@
         newBox.style.borderColor = newBorder;
         newBox.style.backgroundColor = `${newBorder}18`;
         if (!newBox.querySelector('.resize-handle')) {
-          ['n','s','e','w','nw','ne','se','sw'].forEach(dir => {
+          ['n','s','e','w','nw','ne','sw','se'].forEach(dir => {
             const rh = document.createElement('div');
             rh.className = `resize-handle resize-handle-${dir}`;
             rh.dataset.dir = dir;
@@ -3070,12 +3206,33 @@
       if (e.button !== 0) return;
       e.preventDefault();
 
-      activeAction = 'drawing';
       rectBounds = DOM.canvasArea.getBoundingClientRect();
-      
       const clickX = ((e.clientX - rectBounds.left) / rectBounds.width) * 1000;
       const clickY = ((e.clientY - rectBounds.top) / rectBounds.height) * 1000;
 
+      if (e.shiftKey) {
+        // Lasso / box select
+        activeAction = 'lasso';
+        currentElementId = null;
+        initialX = e.clientX;
+        initialY = e.clientY;
+        initialBoxCoords = { x1: clickX, y1: clickY, x2: clickX, y2: clickY };
+
+        const overlay = document.createElement('div');
+        overlay.id = 'lasso-overlay';
+        overlay.style.cssText = 'position:absolute;pointer-events:none;z-index:200;border:1px solid #6366f1;background:rgba(99,102,241,0.08);border-radius:2px;';
+        DOM.canvasArea.appendChild(overlay);
+
+        document.addEventListener('mousemove', handleGlobalMouseMove);
+        document.addEventListener('mouseup', handleGlobalMouseUp);
+        return;
+      }
+
+      // Deselect all on empty canvas click
+      state.selectedId = null;
+      state.selectedIds = [];
+
+      activeAction = 'drawing';
       const newId = generateId();
       const newEl = {
         id: newId,
@@ -3091,6 +3248,7 @@
 
       state.elements.push(newEl);
       state.selectedId = newId;
+      state.selectedIds = [newId];
       currentElementId = newId;
       initialBoxCoords = { x1: newEl.x1, y1: newEl.y1, x2: newEl.x2, y2: newEl.y2 };
 
@@ -3103,7 +3261,10 @@
     function handleDragMouseDown(e, id) {
       e.preventDefault();
       e.stopPropagation();
-      selectElement(id);
+
+      if (!state.selectedIds.includes(id)) {
+        selectElement(id);
+      }
 
       activeAction = 'dragging';
       currentElementId = id;
@@ -3112,8 +3273,11 @@
       initialX = e.clientX;
       initialY = e.clientY;
 
-      const el = state.elements.find(item => item.id === id);
-      initialBoxCoords = { ...el };
+      initialBoxCoords = {};
+      state.selectedIds.forEach(sid => {
+        const selEl = state.elements.find(item => item.id === sid);
+        if (selEl) initialBoxCoords[sid] = { x1: selEl.x1, y1: selEl.y1, x2: selEl.x2, y2: selEl.y2 };
+      });
 
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
@@ -3139,15 +3303,15 @@
     }
 
     function handleGlobalMouseMove(e) {
-      if (!activeAction || !currentElementId) return;
-
-      const el = state.elements.find(item => item.id === currentElementId);
-      if (!el) return;
+      if (!activeAction) return;
 
       const deltaX = ((e.clientX - initialX) / rectBounds.width) * 1000;
       const deltaY = ((e.clientY - initialY) / rectBounds.height) * 1000;
 
       if (activeAction === 'drawing') {
+        if (!currentElementId) return;
+        const el = state.elements.find(item => item.id === currentElementId);
+        if (!el) return;
         const mouseX = ((e.clientX - rectBounds.left) / rectBounds.width) * 1000;
         const mouseY = ((e.clientY - rectBounds.top) / rectBounds.height) * 1000;
 
@@ -3169,31 +3333,68 @@
         el.y1 = Math.max(0, Math.min(1000, newY1));
         el.x2 = Math.max(0, Math.min(1000, newX2));
         el.y2 = Math.max(0, Math.min(1000, newY2));
+
+        _dragElId = el.id;
       } 
       else if (activeAction === 'dragging') {
-        const width = initialBoxCoords.x2 - initialBoxCoords.x1;
-        const height = initialBoxCoords.y2 - initialBoxCoords.y1;
-
-        let newX1 = Math.round(initialBoxCoords.x1 + deltaX);
-        let newY1 = Math.round(initialBoxCoords.y1 + deltaY);
-
-        if (snapEnabled) {
-          const snapped = applyDragSnap(el.id, newX1, newY1, newX1 + width, newY1 + height);
-          newX1 = snapped.x1;
-          newY1 = snapped.y1;
+        // Shift-constrain to 45° angle snap
+        let constrainedDeltaX = deltaX;
+        let constrainedDeltaY = deltaY;
+        if (e.shiftKey) {
+          const angle = Math.atan2(deltaY, deltaX);
+          const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+          const mag = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          constrainedDeltaX = Math.cos(snapped) * mag;
+          constrainedDeltaY = Math.sin(snapped) * mag;
         }
-
-        if (newX1 < 0) newX1 = 0;
-        if (newY1 < 0) newY1 = 0;
-        if (newX1 + width > 1000) newX1 = 1000 - width;
-        if (newY1 + height > 1000) newY1 = 1000 - height;
-
-        el.x1 = newX1;
-        el.y1 = newY1;
-        el.x2 = newX1 + width;
-        el.y2 = newY1 + height;
+        for (const [sid, coords] of Object.entries(initialBoxCoords)) {
+          const selEl = state.elements.find(item => item.id === sid);
+          if (!selEl) continue;
+          const w = coords.x2 - coords.x1;
+          const h = coords.y2 - coords.y1;
+          let newX1 = Math.round(coords.x1 + constrainedDeltaX);
+          let newY1 = Math.round(coords.y1 + constrainedDeltaY);
+          if (newX1 < 0) newX1 = 0;
+          if (newY1 < 0) newY1 = 0;
+          if (newX1 + w > 1000) newX1 = 1000 - w;
+          if (newY1 + h > 1000) newY1 = 1000 - h;
+          selEl.x1 = newX1;
+          selEl.y1 = newY1;
+          selEl.x2 = newX1 + w;
+          selEl.y2 = newY1 + h;
+        }
+        // Snap primary element and apply offset to all selected
+        if (snapEnabled && !e.shiftKey && state.selectedId) {
+          const primaryEl = state.elements.find(item => item.id === state.selectedId);
+          if (primaryEl && initialBoxCoords[state.selectedId]) {
+            const init = initialBoxCoords[state.selectedId];
+            const pW = init.x2 - init.x1;
+            const pH = init.y2 - init.y1;
+            const rawX1 = Math.round(init.x1 + constrainedDeltaX);
+            const rawY1 = Math.round(init.y1 + constrainedDeltaY);
+            const snapped = applyDragSnap(state.selectedId, rawX1, rawY1, rawX1 + pW, rawY1 + pH);
+            const dx = snapped.x1 - primaryEl.x1;
+            const dy = snapped.y1 - primaryEl.y1;
+            if (dx !== 0 || dy !== 0) {
+              for (const [sid, coords] of Object.entries(initialBoxCoords)) {
+                const selEl = state.elements.find(item => item.id === sid);
+                if (!selEl) continue;
+                const w = coords.x2 - coords.x1;
+                const h = coords.y2 - coords.y1;
+                selEl.x1 += dx;
+                selEl.y1 += dy;
+                selEl.x2 += dx;
+                selEl.y2 += dy;
+              }
+            }
+          }
+        }
+        _dragElId = state.selectedId;
       } 
       else if (activeAction === 'resizing') {
+        if (!currentElementId) return;
+        const el = state.elements.find(item => item.id === currentElementId);
+        if (!el) return;
         const dir = activeDirection;
         let {x1, y1, x2, y2} = initialBoxCoords;
         const minSize = 30;
@@ -3206,6 +3407,24 @@
         if (snapEnabled) {
           const snapped = applyResizeSnap(el.id, x1, y1, x2, y2, dir);
           x1 = snapped.x1; y1 = snapped.y1; x2 = snapped.x2; y2 = snapped.y2;
+        }
+
+        // Shift locks aspect ratio for corner handles
+        if (e.shiftKey && dir.length === 2) {
+          const origW = initialBoxCoords.x2 - initialBoxCoords.x1;
+          const origH = initialBoxCoords.y2 - initialBoxCoords.y1;
+          const ratio = origW / origH;
+          const newW = x2 - x1;
+          const newH = y2 - y1;
+          if (Math.abs(newW - origW) * origH > Math.abs(newH - origH) * origW) {
+            const constrainedH = newW / ratio;
+            if (dir.includes('s')) y2 = Math.round(y1 + constrainedH);
+            else y1 = Math.round(y2 - constrainedH);
+          } else {
+            const constrainedW = newH * ratio;
+            if (dir.includes('e')) x2 = Math.round(x1 + constrainedW);
+            else x1 = Math.round(x2 - constrainedW);
+          }
         }
 
         if (x2 - x1 < minSize) {
@@ -3230,11 +3449,25 @@
         }
 
         el.x1 = x1; el.y1 = y1; el.x2 = x2; el.y2 = y2;
+        _dragElId = el.id;
+      }
+      else if (activeAction === 'lasso') {
+        const overlay = document.getElementById('lasso-overlay');
+        if (overlay) {
+          const left = Math.min(initialX, e.clientX);
+          const top = Math.min(initialY, e.clientY);
+          const w = Math.abs(e.clientX - initialX);
+          const h = Math.abs(e.clientY - initialY);
+          overlay.style.left = (left - rectBounds.left) + 'px';
+          overlay.style.top = (top - rectBounds.top) + 'px';
+          overlay.style.width = w + 'px';
+          overlay.style.height = h + 'px';
+        }
+        return;
       }
 
       // Batch DOM updates with requestAnimationFrame
-      _dragElId = el.id;
-      if (!_rafPending) {
+      if (!_rafPending && _dragElId) {
         _rafPending = true;
         _rafId = requestAnimationFrame(() => {
           _rafPending = false;
@@ -3245,8 +3478,23 @@
 
           renderSnapLines();
 
+          // Update all dragged element positions
+          if (activeAction === 'dragging') {
+            for (const sid of Object.keys(initialBoxCoords)) {
+              const selEl = state.elements.find(item => item.id === sid);
+              if (!selEl) continue;
+              const vb = document.getElementById(`box-${sid}`);
+              if (vb) {
+                vb.style.top = `${selEl.y1 / 10}%`;
+                vb.style.left = `${selEl.x1 / 10}%`;
+                vb.style.width = `${(selEl.x2 - selEl.x1) / 10}%`;
+                vb.style.height = `${(selEl.y2 - selEl.y1) / 10}%`;
+              }
+            }
+          }
+
           const visualBox = document.getElementById(`box-${targetEl.id}`);
-          if (visualBox) {
+          if (visualBox && activeAction !== 'dragging') {
             visualBox.style.top = `${targetEl.y1 / 10}%`;
             visualBox.style.left = `${targetEl.x1 / 10}%`;
             visualBox.style.width = `${(targetEl.x2 - targetEl.x1) / 10}%`;
@@ -3269,7 +3517,7 @@
       }
     }
 
-    function handleGlobalMouseUp() {
+    function handleGlobalMouseUp(e) {
       clearSnapLines();
       let isChanged = false;
       if (activeAction === 'drawing') {
@@ -3277,16 +3525,60 @@
         if (el && (el.x2 - el.x1 < 10 || el.y2 - el.y1 < 10)) {
           state.elements = state.elements.filter(item => item.id !== el.id);
           state.selectedId = null;
+          state.selectedIds = [];
         } else {
           isChanged = true;
           state.activeTab = 'layers';
           syncActiveTab(false);
         }
-      } else if (activeAction === 'dragging' || activeAction === 'resizing') {
-        const el = state.elements.find(item => item.id === currentElementId);
-        if (el && (el.x1 !== initialBoxCoords.x1 || el.y1 !== initialBoxCoords.y1 || el.x2 !== initialBoxCoords.x2 || el.y2 !== initialBoxCoords.y2)) {
-          isChanged = true;
+      } else if (activeAction === 'dragging') {
+        for (const [sid, coords] of Object.entries(initialBoxCoords)) {
+          const el = state.elements.find(item => item.id === sid);
+          if (el && (el.x1 !== coords.x1 || el.y1 !== coords.y1 || el.x2 !== coords.x2 || el.y2 !== coords.y2)) {
+            isChanged = true;
+            break;
+          }
         }
+      } else if (activeAction === 'resizing') {
+        const el = state.elements.find(item => item.id === currentElementId);
+        if (el && initialBoxCoords) {
+          if (el.x1 !== initialBoxCoords.x1 || el.y1 !== initialBoxCoords.y1 || el.x2 !== initialBoxCoords.x2 || el.y2 !== initialBoxCoords.y2) {
+            isChanged = true;
+          }
+        }
+      } else if (activeAction === 'lasso') {
+        const overlay = document.getElementById('lasso-overlay');
+        if (overlay) overlay.remove();
+        // Calculate lasso rectangle in canvas coordinates
+        const sx = (initialX - rectBounds.left) / rectBounds.width * 1000;
+        const sy = (initialY - rectBounds.top) / rectBounds.height * 1000;
+        const ex = (e.clientX - rectBounds.left) / rectBounds.width * 1000;
+        const ey = (e.clientY - rectBounds.top) / rectBounds.height * 1000;
+        const lx1 = Math.max(0, Math.min(sx, ex));
+        const ly1 = Math.max(0, Math.min(sy, ey));
+        const lx2 = Math.min(1000, Math.max(sx, ex));
+        const ly2 = Math.min(1000, Math.max(sy, ey));
+        // Add elements that intersect the lasso rectangle to selection
+        if (lx2 - lx1 > 5 && ly2 - ly1 > 5) {
+          const existing = new Set(state.selectedIds);
+          state.elements.forEach(el => {
+            if (el.hidden) return;
+            const overlapX = el.x1 < lx2 && el.x2 > lx1;
+            const overlapY = el.y1 < ly2 && el.y2 > ly1;
+            if (overlapX && overlapY) {
+              if (!existing.has(el.id)) {
+                state.selectedIds.push(el.id);
+                existing.add(el.id);
+              }
+            }
+          });
+        }
+        state.selectedId = state.selectedIds.length > 0 ? state.selectedIds[state.selectedIds.length - 1] : null;
+        activeAction = null;
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+        renderAll(true);
+        return;
       }
 
       if (_rafId) {
@@ -3366,8 +3658,10 @@
         highLevelDescription: state.highLevelDescription,
         styleDescription: state.styleDescription,
         background: state.background,
+        canvasBackgroundImage: state.canvasBackgroundImage,
         elements: state.elements,
         selectedId: state.selectedId,
+        selectedIds: state.selectedIds,
         groupNames: _groupNames,
         collapsedGroups: Array.from(_collapsedGroups)
       };
@@ -3381,20 +3675,71 @@
       return el;
     }
 
+    function setCanvasBackground(url) {
+      state.canvasBackgroundImage = url || '';
+      renderCanvasBackground();
+      updateCanvasBgUI();
+      debouncedSave();
+    }
+
+    function clearCanvasBackground() {
+      state.canvasBackgroundImage = '';
+      renderCanvasBackground();
+      updateCanvasBgUI();
+      debouncedSave();
+    }
+
+    function updateCanvasBgUI() {
+      const url = state.canvasBackgroundImage || '';
+      if (DOM.canvasBgUrlInput) DOM.canvasBgUrlInput.value = url;
+      const preview = DOM.canvasBgPreview;
+      const previewImg = DOM.canvasBgPreviewImg;
+      if (url && preview && previewImg) {
+        previewImg.src = url;
+        preview.classList.remove('hidden');
+      } else if (preview) {
+        preview.classList.add('hidden');
+        if (previewImg) previewImg.src = '';
+      }
+    }
+
+    function renderCanvasBackground() {
+      if (!DOM.canvasArea) return;
+      let bgEl = DOM.canvasArea.querySelector('.canvas-bg-image');
+      const url = state.canvasBackgroundImage || '';
+      const show = DOM.canvasBgToggle ? DOM.canvasBgToggle.checked : true;
+      if (url && show) {
+        if (!bgEl) {
+          bgEl = document.createElement('img');
+          bgEl.className = 'canvas-bg-image';
+          bgEl.draggable = false;
+          bgEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;pointer-events:none;z-index:0;opacity:0.5;';
+          DOM.canvasArea.insertBefore(bgEl, DOM.canvasArea.firstChild);
+        }
+        bgEl.src = url;
+        bgEl.style.display = '';
+      } else {
+        if (bgEl) bgEl.style.display = 'none';
+      }
+    }
+
     function restoreState(data) {
       state.aspectRatio = data.aspectRatio || '3:4';
       state.activeTab = data.activeTab || 'global';
       state.highLevelDescription = data.highLevelDescription || '';
       state.styleDescription = JSON.parse(JSON.stringify(data.styleDescription || { fields: [], color_palette: [] }));
       state.background = data.background || '';
+      state.canvasBackgroundImage = data.canvasBackgroundImage || '';
       state.elements = (data.elements || []).map(el => normalizeElement({ ...el }));
       state.selectedId = data.selectedId || null;
+      state.selectedIds = data.selectedIds || [];
       _groupNames = data.groupNames || {};
       _collapsedGroups = new Set(data.collapsedGroups || []);
 
       DOM.hldInput.value = state.highLevelDescription;
       DOM.backgroundInput.value = state.background;
 
+      updateCanvasBgUI();
       syncAspectUI();
       resizeCanvas();
       renderAll(true);
@@ -3487,6 +3832,7 @@
     function restoreFromGenerated(data) {
       state.highLevelDescription = data.high_level_description || '';
       state.background = data.compositional_deconstruction?.background || '';
+      state.canvasBackgroundImage = data.canvasBackgroundImage || '';
       state.elements = (data.compositional_deconstruction?.elements || []).map(el => normalizeElement({
         id: 'el_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         type: el.type || 'obj',
@@ -3500,6 +3846,7 @@
         imageUrl: ''
       }));
       state.selectedId = null;
+      state.selectedIds = [];
       _groupNames = {};
       _collapsedGroups = new Set();
 
@@ -3513,6 +3860,7 @@
 
       DOM.hldInput.value = state.highLevelDescription;
       DOM.backgroundInput.value = state.background;
+      updateCanvasBgUI();
       syncAspectUI();
       resizeCanvas();
       renderAll(true);

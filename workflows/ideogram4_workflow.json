@@ -1,8 +1,8 @@
 {
   "id": "c0d3b8fd-fed8-4f6e-8ede-b3c70d7b6f3e",
   "revision": 0,
-  "last_node_id": 222,
-  "last_link_id": 262,
+  "last_node_id": 231,
+  "last_link_id": 275,
   "nodes": [
     {
       "id": 99,
@@ -53,49 +53,51 @@
       "bgcolor": "#000"
     },
     {
-      "id": 158,
-      "type": "SaveImage",
+      "id": 177,
+      "type": "AspectRatioCalculator",
       "pos": [
-        6836.04233167385,
-        554.1955136047608
+        6014.561263924813,
+        1032.7263474333222
       ],
       "size": [
-        520,
-        690
+        270,
+        126
       ],
       "flags": {},
-      "order": 5,
+      "order": 2,
       "mode": 0,
-      "inputs": [
+      "inputs": [],
+      "outputs": [
         {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 224
+          "name": "width",
+          "type": "INT",
+          "links": [
+            258
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            257
+          ]
         }
       ],
-      "outputs": [],
       "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.24.0",
-        "enableTabs": false,
-        "tabWidth": 65,
-        "tabXOffset": 10,
-        "hasSecondTab": false,
-        "secondTabText": "Send Back",
-        "secondTabOffset": 80,
-        "secondTabWidth": 65,
-        "Node name for S&R": "SaveImage"
+        "Node name for S&R": "AspectRatioCalculator"
       },
       "widgets_values": [
-        "Ideogram_4.0"
+        4,
+        1,
+        1024
       ]
     },
     {
       "id": 98,
       "type": "83e6e004-48ea-408e-9024-eb49c3d7dc14",
       "pos": [
-        6326.5728164020375,
-        554.3776572970812
+        6331.816814078637,
+        539.9566636864313
       ],
       "size": [
         440,
@@ -133,6 +135,14 @@
           "link": 257
         },
         {
+          "name": "noise_seed",
+          "type": "INT",
+          "widget": {
+            "name": "noise_seed"
+          },
+          "link": 274
+        },
+        {
           "label": "unconditional_unet",
           "name": "unet_name_1",
           "type": "COMBO",
@@ -149,11 +159,6 @@
             "name": "choice"
           },
           "link": null
-        },
-        {
-          "name": "noise_seed",
-          "type": "INT",
-          "link": 259
         }
       ],
       "outputs": [
@@ -161,7 +166,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            224
+            270
           ]
         }
       ],
@@ -178,6 +183,10 @@
           [
             "28",
             "value"
+          ],
+          [
+            "18",
+            "noise_seed"
           ],
           [
             "23",
@@ -213,55 +222,61 @@
       "widgets_values": []
     },
     {
-      "id": 177,
-      "type": "AspectRatioCalculator",
+      "id": 158,
+      "type": "SaveImage",
       "pos": [
-        5982.382187272945,
-        1050.603612239912
+        6870.245409656535,
+        544.0576057778235
       ],
       "size": [
-        270,
-        126
+        520,
+        690
       ],
       "flags": {},
-      "order": 2,
+      "order": 5,
       "mode": 0,
-      "inputs": [],
-      "outputs": [
+      "inputs": [
         {
-          "name": "width",
-          "type": "INT",
-          "links": [
-            258
-          ]
+          "name": "images",
+          "type": "IMAGE",
+          "link": 270
         },
         {
-          "name": "height",
-          "type": "INT",
-          "links": [
-            257
-          ]
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": 275
         }
       ],
+      "outputs": [],
       "properties": {
-        "Node name for S&R": "AspectRatioCalculator"
+        "cnr_id": "comfy-core",
+        "ver": "0.24.0",
+        "enableTabs": false,
+        "tabWidth": 65,
+        "tabXOffset": 10,
+        "hasSecondTab": false,
+        "secondTabText": "Send Back",
+        "secondTabOffset": 80,
+        "secondTabWidth": 65,
+        "Node name for S&R": "SaveImage"
       },
       "widgets_values": [
-        16,
-        9,
-        2048
+        "Ideogram_4.0"
       ]
     },
     {
-      "id": 222,
+      "id": 231,
       "type": "SeedGenerator",
       "pos": [
-        5982.382187272945,
-        1200
+        6029.557078071638,
+        1241.0334045796865
       ],
       "size": [
         270,
-        126
+        150
       ],
       "flags": {},
       "order": 3,
@@ -272,7 +287,14 @@
           "name": "seed",
           "type": "INT",
           "links": [
-            259
+            274
+          ]
+        },
+        {
+          "name": "seed_str",
+          "type": "STRING",
+          "links": [
+            275
           ]
         }
       ],
@@ -280,21 +302,14 @@
         "Node name for S&R": "SeedGenerator"
       },
       "widgets_values": [
-        0,
-        "fixed",
-        ""
+        346005646384083,
+        "randomize",
+        "phrase",
+        "Kevin"
       ]
     }
   ],
   "links": [
-    [
-      224,
-      98,
-      0,
-      158,
-      0,
-      "IMAGE"
-    ],
     [
       257,
       177,
@@ -312,12 +327,28 @@
       "INT"
     ],
     [
-      259,
-      222,
+      270,
+      98,
+      0,
+      158,
+      0,
+      "IMAGE"
+    ],
+    [
+      274,
+      231,
       0,
       98,
-      5,
+      3,
       "INT"
+    ],
+    [
+      275,
+      231,
+      1,
+      158,
+      1,
+      "STRING"
     ]
   ],
   "groups": [],
@@ -328,8 +359,8 @@
         "version": 1,
         "state": {
           "lastGroupId": 10,
-          "lastNodeId": 221,
-          "lastLinkId": 262,
+          "lastNodeId": 231,
+          "lastLinkId": 275,
           "lastRerouteId": 0
         },
         "revision": 0,
@@ -962,7 +993,7 @@
               "secondTabWidth": 65
             },
             "widgets_values": [
-              956069632113908,
+              1002127371527162,
               "randomize"
             ]
           },
@@ -1083,7 +1114,7 @@
               "secondTabWidth": 65
             },
             "widgets_values": [
-              "{\n  \"high_level_description\": \"Anime art style of a man riding a bike along a river side\",\n  \"style_description\": {\n    \"custom_1780901344434_0\": \"CoMix Wave Films animation style\",\n    \"custom_1780901460700_1\": \"cell animation, hand drawn, and digital background compositing\",\n    \"color_palette\": []\n  },\n  \"compositional_deconstruction\": {\n    \"background\": \"\",\n    \"elements\": [\n      {\n        \"type\": \"obj\",\n        \"bbox\": [\n          338,\n          401,\n          532,\n          598\n        ],\n        \"desc\": \"Bicycle\"\n      },\n      {\n        \"type\": \"obj\",\n        \"bbox\": [\n          148,\n          453,\n          472,\n          547\n        ],\n        \"desc\": \"Man\"\n      },\n      {\n        \"type\": \"obj\",\n        \"bbox\": [\n          0,\n          0,\n          403,\n          1000\n        ],\n        \"desc\": \"open sky\"\n      },\n      {\n        \"type\": \"obj\",\n        \"bbox\": [\n          532,\n          0,\n          739,\n          1000\n        ],\n        \"desc\": \"grassy incline\"\n      },\n      {\n        \"type\": \"obj\",\n        \"bbox\": [\n          739,\n          0,\n          1000,\n          1000\n        ],\n        \"desc\": \"river\"\n      },\n      {\n        \"type\": \"obj\",\n        \"bbox\": [\n          0,\n          700,\n          403,\n          755\n        ],\n        \"desc\": \"road sign\"\n      },\n      {\n        \"type\": \"obj\",\n        \"bbox\": [\n          739,\n          401,\n          1000,\n          598\n        ],\n        \"desc\": \"Reflection of man and bike in the water\"\n      }\n    ]\n  }\n}"
+              "{\"high_level_description\":\"Logo design for \\\"Colectibull\\\" sans-serif variable font dynamic shape angular With letters stacked and interweaved. Working smoothly together in a satisfying flow.\",\"style_description\":{\"aesthetics\":\"Clean SVG 1 color\",\"art_style\":\"svg vector logo design\",\"color_palette\":[\"#000000\",\"#ffffff\"]},\"compositional_deconstruction\":{\"background\":\"white\",\"elements\":[{\"type\":\"obj\",\"bbox\":[218,170,818,321],\"desc\":\"Silhouette of bull stylized angler design simple modern\",\"color_palette\":[\"#000000\"]},{\"type\":\"text\",\"text\":\"CoLLETiBull\",\"bbox\":[218,321,818,811],\"desc\":\"sans-serif variable font, with subtle bull imagery\"}]}}"
             ]
           },
           {
@@ -1603,7 +1634,7 @@
             },
             "widgets_values": [
               "{\n  \"Quality\": {\n    \"num_steps\": 48,\n    \"mu\": 0.0,\n    \"std\": 1.5,\n    \"preset_id\": \"V4_QUALITY_48\"\n  },\n  \"Default\": {\n    \"num_steps\": 20,\n    \"mu\": 0.0,\n    \"std\": 1.75,\n    \"preset_id\": \"V4_DEFAULT_20\"\n  },\n  \"Turbo\": {\n    \"num_steps\": 12,\n    \"mu\": 0.5,\n    \"std\": 1.75,\n    \"preset_id\": \"V4_TURBO_12\"\n  }\n}",
-              "Turbo"
+              "Default"
             ]
           },
           {
@@ -2002,8 +2033,8 @@
               "secondTabWidth": 65
             },
             "widgets_values": [
-              "Turbo",
-              2,
+              "Default",
+              1,
               "Quality",
               "Default",
               "Turbo",
@@ -2472,10 +2503,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.6303940863128518,
+      "scale": 0.8390545288824102,
       "offset": [
-        -5200.204767513199,
-        -148.74952334898745
+        -5123.135166327611,
+        -363.9001387243004
       ]
     },
     "frontendVersion": "1.45.15",

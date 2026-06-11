@@ -15,25 +15,27 @@ class SeedGenerator:
             }
         }
 
-    RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("seed",)
+    RETURN_TYPES = ("INT", "STRING")
+    RETURN_NAMES = ("seed", "seed_str")
     FUNCTION = "generate_seed"
     CATEGORY = "utilities"
 
     def generate_seed(self, seed, mode, phrase=""):
         if mode == "fixed":
-            return (seed,)
+            value = seed
         elif mode == "random":
-            return (random.randint(0, 0xffffffffffffffff),)
+            value = random.randint(0, 0xffffffffffffffff)
         elif mode == "step":
-            return (seed + 1,)
+            value = seed + 1
         elif mode == "phrase":
             if not phrase:
-                return (seed,)
-            digest = hashlib.sha256(phrase.encode()).digest()
-            value = int.from_bytes(digest[:8], byteorder="big")
-            return (value,)
-        return (seed,)
+                value = seed
+            else:
+                digest = hashlib.sha256(phrase.encode()).digest()
+                value = int.from_bytes(digest[:8], byteorder="big")
+        else:
+            value = seed
+        return (value, str(value))
 
 
 NODE_CLASS_MAPPINGS = {
