@@ -36,6 +36,11 @@
     #bottom-palette::-webkit-scrollbar { display: none; }
     /* Update banner dismiss hover */
     #update-dismiss:hover { background: rgba(255,255,255,0.15); }
+    #update-banner:not(.hidden) { animation: pulse-notice 3s ease-in-out 3; }
+    @keyframes pulse-notice {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
     /* Professional multi-directional resize handles */
     .resize-handle {
       position: absolute;
@@ -86,17 +91,104 @@
       box-shadow: 0 0 4px rgba(0,0,0,0.5);
       cursor: pointer;
     }
+    /* Drag & reorder */
+    .drag-handle {
+      cursor: grab;
+      color: #64748b;
+      transition: color 0.15s;
+    }
+    .drag-handle:hover { color: #94a3b8; }
+    .drag-handle:active { cursor: grabbing; }
+    .dragging-source { opacity: 0.35; }
+    /* Drop placeholder skeleton */
+    .drop-placeholder {
+      border: 2px dashed #6366f1;
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.06);
+      margin: 0 0 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      overflow: hidden;
+      transition: height 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                  margin 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.18s ease;
+      will-change: height;
+      height: 0;
+      opacity: 0;
+    }
+    .drop-placeholder.active {
+      height: 48px;
+      opacity: 1;
+      margin: 8px 0;
+    }
+    .drop-placeholder-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #6366f1;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 0.15s ease 0.1s;
+    }
+    .drop-placeholder.active .drop-placeholder-inner {
+      opacity: 0.8;
+    }
+    .drop-placeholder-pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #6366f1;
+      animation: drop-pulse 1s ease-in-out infinite;
+    }
+    @keyframes drop-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.6); }
+      50% { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
+    }
+    /* Cards animate when dragging */
+    #elements-list.dragging-active > * {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* Group styling */
+    .group-header {
+      cursor: pointer;
+      user-select: none;
+    }
+    .group-header:hover { background: #1e293b; }
+    .group-children { }
+    .group-children.collapsed { display: none; }
+    /* Group drop target highlight */
+    .group-children.group-drop-target {
+      border-color: #6366f1;
+      background: rgba(99, 102, 241, 0.06);
+      border-radius: 0 8px 8px 0;
+    }
+    /* Hidden item */
+    .element-hidden { opacity: 0.45; }
+    /* Visual color bar */
+    .color-bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      border-radius: 3px 0 0 3px;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 flex flex-col h-screen select-none">
 
   <!-- Update Available Banner -->
-  <div id="update-banner" class="hidden bg-indigo-600/90 text-white text-[11px] py-1 px-4 flex items-center justify-center gap-2" style="min-height:28px">
+  <div id="update-banner" class="hidden bg-red-600/90 text-white text-[11px] py-1 px-4 flex items-center justify-center gap-2" style="min-height:28px">
     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
     <span>A new version is available:</span>
-    <a id="update-link" href="#" target="_blank" class="font-bold underline hover:text-indigo-200">Download latest release</a>
-    <span id="update-version" class="text-indigo-200"></span>
-    <button id="update-dismiss" class="ml-2 p-0.5 rounded hover:bg-indigo-500 transition" title="Dismiss">
+    <a id="update-link" href="#" target="_blank" class="font-bold underline hover:text-red-200">Download latest release</a>
+    <span id="update-version" class="text-red-200"></span>
+    <button id="update-dismiss" class="ml-2 p-0.5 rounded hover:bg-red-700 transition" title="Dismiss">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
   </div>
@@ -250,9 +342,14 @@
         <div id="tab-layers-panel" class="hidden space-y-4">
           <div class="flex items-center justify-between">
             <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Render Hierarchy</span>
-            <button id="tab-add-element-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] px-2.5 py-1.5 rounded transition flex items-center gap-1">
-              <span>+</span> Add Box
-            </button>
+            <div class="flex items-center gap-1">
+              <button id="group-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[10px] px-2 py-1.5 rounded transition flex items-center gap-1" title="Group selected elements">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z"/></svg>
+              </button>
+              <button id="tab-add-element-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] px-2.5 py-1.5 rounded transition flex items-center gap-1">
+                <span>+</span> Add Box
+              </button>
+            </div>
           </div>
           <div id="elements-list" class="space-y-3">
             <!-- Layers cards rendered via JS -->
@@ -685,7 +782,9 @@
           styleDescription: state.styleDescription,
           background: state.background,
           elements: state.elements,
-          selectedId: state.selectedId
+          selectedId: state.selectedId,
+          groupNames: _groupNames,
+          collapsedGroups: Array.from(_collapsedGroups)
         }));
         this.stack.push(copy);
         this.index++;
@@ -712,6 +811,8 @@
         state.background = snap.background;
         state.elements = JSON.parse(JSON.stringify(snap.elements));
         state.selectedId = snap.selectedId;
+        _groupNames = snap.groupNames || {};
+        _collapsedGroups = new Set(snap.collapsedGroups || []);
 
         // Restore dynamic inputs inside panels using verified DOM namespace
         DOM.hldInput.value = state.highLevelDescription;
@@ -783,7 +884,7 @@
     document.addEventListener("DOMContentLoaded", () => {
       const elementsToCache = [
         'aspect-ratio-selector', 'canvas-wrapper', 'canvas-area', 
-        'elements-list', 'tab-add-element-btn', 'canvas-add-btn', 
+        'elements-list', 'tab-add-element-btn', 'canvas-add-btn', 'group-btn',
         'hld-input', 'background-input', 'json-output', 'copy-btn', 'minify-toggle', 
         'preset-selector', 'tab-global-btn', 'tab-layers-btn', 'tab-global-panel', 
         'tab-layers-panel', 'extended-style-section', 'style-fields-container',
@@ -839,6 +940,7 @@
       // Double Hookups on Box additions
       DOM.tabAddElementBtn.addEventListener('click', handleAddElement);
       DOM.canvasAddBtn.addEventListener('click', handleAddElement);
+      DOM.groupBtn.addEventListener('click', groupSelectedElements);
       DOM.presetSelector.addEventListener('change', handlePresetLoad);
       // Clicking the already-selected preset will dispatch a change event when we reset
       DOM.presetSelector.addEventListener('mousedown', function() {
@@ -950,6 +1052,92 @@
       DOM.undoBtn.addEventListener('click', () => history.undo());
       DOM.redoBtn.addEventListener('click', () => history.redo());
 
+      // Container-level drag & drop for reorder
+      DOM.elementsList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!_dropSourceId) return;
+        // Highlight target group when dragging a group
+        if (_dropSourceId.startsWith('group_')) {
+          const draggedGroupId = _dropSourceId.slice(6);
+          DOM.elementsList.querySelectorAll('.group-children.group-drop-target').forEach(el => {
+            el.classList.remove('group-drop-target');
+          });
+          const groupWrapper = e.target.closest('[data-group-id]');
+          if (groupWrapper && groupWrapper.dataset.groupId !== draggedGroupId) {
+            const children = groupWrapper.querySelector('.group-children');
+            if (children) children.classList.add('group-drop-target');
+          }
+        }
+        updateDropIndicator(e.clientY);
+      });
+      DOM.elementsList.addEventListener('dragleave', (e) => {
+        if (!DOM.elementsList.contains(e.relatedTarget)) {
+          clearDropIndicator();
+        }
+      });
+      DOM.elementsList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const draggedId = _dropSourceId;
+        if (!draggedId) return;
+        clearDropIndicator();
+        const allDraggables = Array.from(DOM.elementsList.querySelectorAll('[draggable]'))
+          .filter(el => !el.classList.contains('dragging-source') && !el.closest('.dragging-source'));
+        let targetEl = null;
+        let insertAfter = true;
+        for (let i = 0; i < allDraggables.length; i++) {
+          const rect = allDraggables[i].getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) {
+            targetEl = allDraggables[i];
+            insertAfter = false;
+            break;
+          }
+        }
+        if (!targetEl && allDraggables.length > 0) {
+          targetEl = allDraggables[allDraggables.length - 1];
+          insertAfter = true;
+        }
+        if (draggedId.startsWith('group_')) {
+          const sourceGroupId = draggedId.slice(6);
+          let targetGroupId = null;
+          if (targetEl) {
+            if (targetEl.dataset.groupId) {
+              targetGroupId = targetEl.dataset.groupId;
+            } else {
+              const container = targetEl.closest('[data-group-id]');
+              if (container) targetGroupId = container.dataset.groupId;
+            }
+          }
+          if (targetGroupId && targetGroupId !== sourceGroupId) {
+            mergeGroups(sourceGroupId, targetGroupId, targetEl, insertAfter);
+          } else {
+            handleReorderGroup(sourceGroupId, targetEl, insertAfter);
+          }
+        } else {
+          let targetId = null;
+          let dropGroupId = null;
+          if (targetEl) {
+            if (targetEl.dataset.elementId) {
+              targetId = targetEl.dataset.elementId;
+              dropGroupId = targetEl.dataset.groupId || null;
+            } else if (targetEl.dataset.groupId) {
+              const cards = targetEl.querySelectorAll('[draggable]');
+              targetId = insertAfter
+                ? (cards[cards.length - 1]?.dataset?.elementId || null)
+                : (cards[0]?.dataset?.elementId || null);
+              dropGroupId = targetEl.dataset.groupId;
+            } else {
+              targetId = targetEl.querySelector('[draggable]')?.dataset?.elementId || null;
+              const container = targetEl.closest('[data-group-id]');
+              dropGroupId = container?.dataset?.groupId || null;
+            }
+          }
+          handleReorder(draggedId, targetId, insertAfter, dropGroupId);
+        }
+        renderAll(true);
+        _dropSourceId = null;
+      });
+
       DOM.saveStateBtn.addEventListener('click', handleSaveState);
       DOM.loadStateBtn.addEventListener('click', () => DOM.loadStateInput.click());
       DOM.loadStateInput.addEventListener('change', handleLoadState);
@@ -1040,6 +1228,8 @@
         };
         state.elements = [];
         state.selectedId = null;
+        _groupNames = {};
+        _collapsedGroups = new Set();
 
         DOM.hldInput.value = '';
         DOM.backgroundInput.value = '';
@@ -1443,7 +1633,7 @@
       if (!preset) return;
 
       state.styleDescription = JSON.parse(JSON.stringify(preset.styleDescription));
-      state.elements = preset.elements.map(el => ({ ...el, id: generateId() }));
+      state.elements = preset.elements.map(el => normalizeElement({ ...el, id: generateId() }));
       state.selectedId = null;
 
       state.highLevelDescription = preset.highLevelDescription;
@@ -1482,6 +1672,9 @@
         state.elements = state.elements.filter(item => item.id !== state.selectedId);
         state.selectedId = null;
         renderAll(true);
+      } else if (hasMetaOrCtrl && e.key.toLowerCase() === 'd' && state.selectedId) {
+        e.preventDefault();
+        handleDuplicateElement(state.selectedId);
       } else if (hasMetaOrCtrl && isZ) {
         e.preventDefault();
         if (e.shiftKey) {
@@ -1536,13 +1729,33 @@
         text: '',
         desc: 'New customized layout element description',
         y1: 300, x1: 300, y2: 600, x2: 600,
-        color_palette: []
+        color_palette: [],
+        hidden: false,
+        group: null,
+        visualColor: null
       };
       state.elements.push(newEl);
       state.selectedId = newEl.id;
       
       state.activeTab = 'layers';
       syncActiveTab(false);
+      renderAll(true);
+    }
+
+    function handleDuplicateElement(id) {
+      const src = state.elements.find(el => el.id === id);
+      if (!src) return;
+      const copy = JSON.parse(JSON.stringify(src));
+      copy.id = generateId();
+      const origW = copy.x2 - copy.x1;
+      const origH = copy.y2 - copy.y1;
+      const offset = 20;
+      copy.x1 = Math.min(1000 - origW, copy.x1 + offset);
+      copy.x2 = Math.min(1000, copy.x2 + offset);
+      copy.y1 = Math.min(1000 - origH, copy.y1 + offset);
+      copy.y2 = Math.min(1000, copy.y2 + offset);
+      state.elements.push(copy);
+      state.selectedId = copy.id;
       renderAll(true);
     }
 
@@ -1951,215 +2164,654 @@
       DOM.styleFieldsContainer.appendChild(addBtn);
     }
 
+    // Group state management
+    let _groupNames = {};
+    let _collapsedGroups = new Set();
+
+    // Drag state
+    let _dropSourceId = null;
+    let _dropPlaceholder = null;
+    let _dropInsertIdx = -1;
+
+    function getDropPlaceholder() {
+      if (!_dropPlaceholder || !document.body.contains(_dropPlaceholder)) {
+        _dropPlaceholder = document.createElement('div');
+        _dropPlaceholder.className = 'drop-placeholder';
+        _dropPlaceholder.innerHTML = '<div class="drop-placeholder-inner"><div class="drop-placeholder-pulse"></div><span>Drop here</span></div>';
+      }
+      return _dropPlaceholder;
+    }
+
+    function _placePlaceholder(insertIdx, allTargets) {
+      const placeholder = getDropPlaceholder();
+      let parent;
+      if (insertIdx < allTargets.length) {
+        const target = allTargets[insertIdx];
+        parent = target.closest('.group-children') || DOM.elementsList;
+        parent.insertBefore(placeholder, target);
+      } else if (allTargets.length > 0) {
+        const lastTarget = allTargets[allTargets.length - 1];
+        parent = lastTarget.closest('.group-children') || DOM.elementsList;
+        parent.appendChild(placeholder);
+      } else {
+        parent = DOM.elementsList;
+        parent.appendChild(placeholder);
+      }
+      const siblings = Array.from(parent.children).filter(
+        c => c.nodeType === 1 && c !== placeholder
+      );
+      const phIdx = Array.from(parent.children).indexOf(placeholder);
+      for (let i = phIdx; i < siblings.length; i++) {
+        siblings[i].style.transform = 'translateY(48px)';
+      }
+    }
+
+    function clearDropIndicator() {
+      const el = getDropPlaceholder();
+      el.classList.remove('active');
+      el.remove();
+      _dropInsertIdx = -1;
+      if (DOM.elementsList) {
+        DOM.elementsList.querySelectorAll('[draggable]').forEach(c => c.style.transform = '');
+      }
+      DOM.elementsList?.querySelectorAll('.group-children.group-drop-target').forEach(el => {
+        el.classList.remove('group-drop-target');
+      });
+    }
+
+    function updateDropIndicator(clientY) {
+      const container = DOM.elementsList;
+      if (!container) return;
+
+      // Clear transforms and remove placeholder so getBoundingClientRect is stable
+      container.querySelectorAll('[draggable]').forEach(c => c.style.transform = '');
+      const placeholder = getDropPlaceholder();
+      if (placeholder.parentNode) {
+        placeholder.remove();
+      }
+
+      const allTargets = Array.from(container.querySelectorAll('[draggable]'))
+        .filter(el => !el.classList.contains('dragging-source') && !el.closest('.dragging-source'));
+
+      if (allTargets.length === 0) return;
+
+      let insertIdx = allTargets.length;
+      for (let i = 0; i < allTargets.length; i++) {
+        const rect = allTargets[i].getBoundingClientRect();
+        if (clientY < rect.top + rect.height / 2) {
+          insertIdx = i;
+          break;
+        }
+      }
+
+      if (insertIdx === _dropInsertIdx) {
+        _placePlaceholder(insertIdx, allTargets);
+        return;
+      }
+      _dropInsertIdx = insertIdx;
+
+      _placePlaceholder(insertIdx, allTargets);
+
+      if (!placeholder.classList.contains('active')) {
+        requestAnimationFrame(() => {
+          placeholder.classList.add('active');
+        });
+      }
+    }
+
     function renderFormElements() {
       DOM.elementsList.innerHTML = '';
+
+      // Walk elements in array order, grouping consecutive same-group items
+      const renderedGroups = new Set();
+      let i = 0;
+      while (i < state.elements.length) {
+        const el = state.elements[i];
+
+        if (el.group && !renderedGroups.has(el.group)) {
+          // First element of a group we haven't rendered yet — render the whole group
+          const groupId = el.group;
+          renderedGroups.add(groupId);
+
+          const groupMembers = [];
+          // Collect all consecutive elements that belong to this group
+          while (i < state.elements.length && state.elements[i].group === groupId) {
+            groupMembers.push(state.elements[i]);
+            i++;
+          }
+
+          const groupName = _groupNames[groupId] || `Group ${groupId.replace('group_', '').slice(0, 6)}`;
+          const isCollapsed = _collapsedGroups.has(groupId);
+
+          const groupEl = document.createElement('div');
+          groupEl.className = 'mb-2';
+          groupEl.dataset.groupId = groupId;
+          groupEl.draggable = true;
+
+          // Group drag events
+          groupEl.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', 'group_' + groupId);
+            e.dataTransfer.effectAllowed = 'move';
+            groupEl.classList.add('dragging-source');
+            DOM.elementsList.classList.add('dragging-active');
+            _dropSourceId = 'group_' + groupId;
+          });
+          groupEl.addEventListener('dragend', () => {
+            groupEl.classList.remove('dragging-source');
+            DOM.elementsList.classList.remove('dragging-active');
+            clearDropIndicator();
+            _dropSourceId = null;
+          });
+
+          const header = document.createElement('div');
+          header.className = 'group-header flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700/50 mb-1';
+          header.innerHTML = `
+            <span class="text-[10px] text-slate-400 transition ${isCollapsed ? '' : 'rotate-90'}">▸</span>
+            <input class="group-name-input flex-1 bg-transparent text-[11px] font-bold text-slate-200 outline-none border-b border-transparent focus:border-indigo-500 transition" value="${htmlEncode(groupName)}" spellcheck="false">
+            <span class="text-[9px] text-slate-500 font-mono">${groupMembers.length}</span>
+            <button class="ungroup-all-btn text-slate-500 hover:text-red-400 transition p-0.5" title="Ungroup all">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h4l2-2m-8 2H5m6 8h4l2 2m-8-2H5m-2-4h14M5 12h14"/></svg>
+            </button>
+          `;
+
+          const nameInput = header.querySelector('.group-name-input');
+
+          header.addEventListener('click', (e) => {
+            if (e.target === nameInput || e.target.closest('.ungroup-all-btn')) return;
+            if (_collapsedGroups.has(groupId)) {
+              _collapsedGroups.delete(groupId);
+            } else {
+              _collapsedGroups.add(groupId);
+            }
+            renderFormElements();
+          });
+
+          nameInput.addEventListener('input', () => {
+            _groupNames[groupId] = nameInput.value;
+          });
+          nameInput.addEventListener('click', (e) => e.stopPropagation());
+
+          header.querySelector('.ungroup-all-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            ungroupAll(groupId);
+          });
+
+          groupEl.appendChild(header);
+
+          const children = document.createElement('div');
+          children.className = `group-children space-y-1.5 ml-2 pl-2 border-l border-slate-700/50 ${isCollapsed ? 'collapsed' : ''}`;
+          groupMembers.forEach(member => {
+            renderElementCard(member, groupId, children);
+          });
+          groupEl.appendChild(children);
+
+          DOM.elementsList.appendChild(groupEl);
+        } else if (el.group && renderedGroups.has(el.group)) {
+          // This element's group was already rendered earlier (non-consecutive members)
+          renderElementCard(el);
+          i++;
+        } else {
+          // Ungrouped element
+          renderElementCard(el);
+          i++;
+        }
+      }
+    }
+
+    function groupSelectedElements() {
+      const selected = state.elements.filter(el => el.id === state.selectedId);
+      if (selected.length === 0) return;
+      const groupId = 'group_' + Date.now();
+      const firstName = selected[0].desc.slice(0, 20) || 'Group';
+      _groupNames[groupId] = firstName;
+      selected.forEach(el => { el.group = groupId; });
+      renderAll(true);
+    }
+
+    function ungroupElement(id) {
+      const el = state.elements.find(e => e.id === id);
+      if (!el) return;
+      el.group = null;
+      renderAll(true);
+    }
+
+    function ungroupAll(groupId) {
       state.elements.forEach(el => {
-        const isSelected = el.id === state.selectedId;
-        const card = document.createElement('div');
-        card.className = `p-4 rounded-xl border transition ${isSelected ? 'border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500' : 'border-slate-800 bg-slate-950/50'}`;
-        card.id = `form-${el.id}`;
-        card.onclick = () => selectElement(el.id);
+        if (el.group === groupId) el.group = null;
+      });
+      delete _groupNames[groupId];
+      _collapsedGroups.delete(groupId);
+      renderAll(true);
+    }
 
-        const colorPickerHTML = `
-          <div class="border-t border-slate-800/50 pt-2.5 mt-2.5">
-            <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500 mb-1">Layer Color Swatches</label>
-            <div class="flex flex-wrap items-center gap-1.5">
-              <div class="element-swatches-container flex flex-wrap gap-1.5"></div>
-              <button class="layer-color-picker w-5 h-5 rounded-full border border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center text-xs text-slate-400 hover:text-indigo-400 transition">+</button>
-            </div>
-          </div>
-        `;
+    function renderElementCard(el, groupId, appendTo) {
+      const isSelected = el.id === state.selectedId;
+      const card = document.createElement('div');
+      const cardBorderColor = el.visualColor ? el.visualColor : (isSelected ? '#6366f1' : '#334155');
+      card.className = `relative p-4 rounded-xl border transition ${isSelected ? 'bg-indigo-500/10 ring-1 ring-indigo-500' : 'bg-slate-950/50'} ${el.hidden ? 'element-hidden' : ''}`;
+      card.style.borderColor = cardBorderColor;
+      card.id = `form-${el.id}`;
+      card.draggable = true;
+      card.dataset.elementId = el.id;
+      card.dataset.groupId = groupId || '';
 
-        card.innerHTML = `
-          <div class="flex items-center justify-between mb-2 gap-2">
-            <div class="flex items-center gap-1">
-              <button class="type-obj-btn text-[10px] font-bold px-1.5 py-0.5 rounded transition ${el.type === 'obj' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">OBJ</button>
-              <button class="type-text-btn text-[10px] font-bold px-1.5 py-0.5 rounded transition ${el.type === 'text' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">TEXT</button>
-              <span class="text-[10px] text-indigo-300 font-mono bg-indigo-950 px-1.5 py-0.5 rounded ml-1">
-                ${el.y1},${el.x1},${el.y2},${el.x2}
-              </span>
-            </div>
-            <button class="delete-btn text-slate-500 hover:text-red-500 transition shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+      // Drag handle + card content row
+      const topRow = document.createElement('div');
+      topRow.className = 'flex items-center justify-between mb-2 gap-1';
+      topRow.innerHTML = `
+        <div class="flex items-center gap-1 min-w-0 flex-1">
+          <span class="drag-handle shrink-0" title="Drag to reorder">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16"/></svg>
+          </span>
+          <button class="type-obj-btn text-[10px] font-bold px-1.5 py-0.5 rounded transition ${el.type === 'obj' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">OBJ</button>
+          <button class="type-text-btn text-[10px] font-bold px-1.5 py-0.5 rounded transition ${el.type === 'text' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">TEXT</button>
+          <span class="text-[10px] text-indigo-300 font-mono bg-indigo-950 px-1.5 py-0.5 rounded ml-1 truncate">
+            ${el.y1},${el.x1},${el.y2},${el.x2}
+          </span>
+        </div>
+        <div class="flex items-center gap-0.5 shrink-0">
+          ${groupId ? `<button class="ungroup-btn text-slate-500 hover:text-yellow-400 transition p-0.5" title="Remove from group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h4l2-2m-8 2H5m6 8h4l2 2m-8-2H5m-2-4h14M5 12h14"/></svg>
+          </button>` : ''}
+          <button class="vis-color-btn text-slate-500 hover:text-indigo-400 transition p-0.5" title="Color code box">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+          </button>
+          <button class="hide-btn transition p-0.5 ${el.hidden ? 'text-amber-400' : 'text-slate-500 hover:text-amber-400'}" title="${el.hidden ? 'Show' : 'Hide'}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">${el.hidden
+              ? '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>'
+              : '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'}
+            </svg>
+          </button>
+          <button class="duplicate-btn text-slate-500 hover:text-indigo-400 transition p-0.5" title="Duplicate (Ctrl+D)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </button>
+          <button class="delete-btn text-slate-500 hover:text-red-500 transition p-0.5" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      `;
+      card.appendChild(topRow);
+
+      // Card body
+      const body = document.createElement('div');
+      body.className = 'space-y-1.5';
+      body.innerHTML = `
+        <textarea rows="2" class="text-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2 py-1 outline-none focus:border-indigo-500 transition leading-relaxed resize-none custom-scroll ${el.type !== 'text' ? 'hidden' : ''}" placeholder="Verbatim text to render...">${htmlEncode(el.text || '')}</textarea>
+        <div>
+          <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500">Description / Style</label>
+          <textarea rows="2" class="desc-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2.5 py-1 outline-none focus:border-indigo-500 leading-relaxed custom-scroll" placeholder="Visual specifications...">${htmlEncode(el.desc)}</textarea>
+        </div>
+        <div class="${el.type === 'text' ? 'hidden' : ''}">
+          <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500 mb-0.5">Visual Image <span class="text-slate-600 font-normal normal-case">(not in prompt)</span></label>
+          <div class="flex items-center gap-1">
+            <input type="text" class="image-url-input flex-1 text-[10px] bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-slate-100 focus:border-indigo-500 outline-none placeholder-slate-600" placeholder="Paste image URL or upload..." value="${htmlEncode(el.imageUrl || '')}">
+            <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 p-1 rounded shrink-0" title="Upload image">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+              <input type="file" accept="image/*" class="image-file-input hidden">
+            </label>
+            <button class="image-clear-btn text-slate-500 hover:text-red-400 transition shrink-0 ${el.imageUrl ? '' : 'hidden'}" title="Remove image">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
             </button>
           </div>
-
-          <div class="space-y-1.5">
-            <textarea rows="2" class="text-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2 py-1 outline-none focus:border-indigo-500 transition leading-relaxed resize-none custom-scroll ${el.type !== 'text' ? 'hidden' : ''}" placeholder="Verbatim text to render...">${htmlEncode(el.text || '')}</textarea>
- 
-             <div>
-               <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500">Description / Style</label>
-               <textarea rows="2" class="desc-val-input w-full text-xs bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-2.5 py-1 outline-none focus:border-indigo-500 leading-relaxed custom-scroll" placeholder="Visual specifications...">${htmlEncode(el.desc)}</textarea>
-            </div>
-
-            <div class="${el.type === 'text' ? 'hidden' : ''}">
-              <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500 mb-0.5">Visual Image <span class="text-slate-600 font-normal normal-case">(not in prompt)</span></label>
-              <div class="flex items-center gap-1">
-                <input type="text" class="image-url-input flex-1 text-[10px] bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-slate-100 focus:border-indigo-500 outline-none placeholder-slate-600" placeholder="Paste image URL or upload..." value="${htmlEncode(el.imageUrl || '')}">
-                <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 p-1 rounded shrink-0" title="Upload image">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
-                  <input type="file" accept="image/*" class="image-file-input hidden">
-                </label>
-                <button class="image-clear-btn text-slate-500 hover:text-red-400 transition shrink-0 ${el.imageUrl ? '' : 'hidden'}" title="Remove image">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
-                </button>
-              </div>
-              <div class="image-preview mt-1 ${el.imageUrl ? '' : 'hidden'} rounded overflow-hidden border border-slate-700 bg-slate-950"></div>
-            </div>
-            ${colorPickerHTML}
+          <div class="image-preview mt-1 ${el.imageUrl ? '' : 'hidden'} rounded overflow-hidden border border-slate-700 bg-slate-950"></div>
+        </div>
+        <div class="border-t border-slate-800/50 pt-2.5 mt-2.5">
+          <label class="block text-[8px] uppercase tracking-wider font-bold text-slate-500 mb-1">Layer Color Swatches</label>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <div class="element-swatches-container flex flex-wrap gap-1.5"></div>
+            <button class="layer-color-picker w-5 h-5 rounded-full border border-dashed border-slate-700 hover:border-indigo-500 flex items-center justify-center text-xs text-slate-400 hover:text-indigo-400 transition">+</button>
           </div>
-        `;
+        </div>
+      `;
+      card.appendChild(body);
 
-        card.querySelector('.type-obj-btn').addEventListener('click', (e) => {
-          e.stopPropagation(); el.type = 'obj'; renderAll();
-        });
-        card.querySelector('.type-text-btn').addEventListener('click', (e) => {
-          e.stopPropagation(); el.type = 'text'; renderAll();
-        });
+      // --- Event handlers ---
+      card.addEventListener('click', () => selectElement(el.id));
 
-        card.querySelector('.text-val-input').addEventListener('input', (e) => {
-          el.text = e.target.value;
-          // Sync directly with canvas visual text element
-          const inlineText = document.querySelector(`#box-${el.id} .inline-canvas-text`);
-          if (inlineText) inlineText.textContent = el.text;
-          debouncedSave();
-        });
+      card.querySelector('.type-obj-btn').addEventListener('click', (e) => {
+        e.stopPropagation(); el.type = 'obj'; renderAll();
+      });
+      card.querySelector('.type-text-btn').addEventListener('click', (e) => {
+        e.stopPropagation(); el.type = 'text'; renderAll();
+      });
 
-        card.querySelector('.desc-val-input').addEventListener('input', (e) => {
-          el.desc = e.target.value;
-          // Sync directly with canvas textbox if active on viewport
-          const inlineDesc = document.querySelector(`#box-${el.id} .inline-canvas-desc`);
-          if (inlineDesc) inlineDesc.value = el.desc;
-          debouncedSave();
-        });
+      card.querySelector('.text-val-input').addEventListener('input', (e) => {
+        el.text = e.target.value;
+        const inlineText = document.querySelector(`#box-${el.id} .inline-canvas-text`);
+        if (inlineText) inlineText.textContent = el.text;
+        debouncedSave();
+      });
 
-        const imageUrlInput = card.querySelector('.image-url-input');
-        const imageFileInput = card.querySelector('.image-file-input');
-        const imageClearBtn = card.querySelector('.image-clear-btn');
+      card.querySelector('.desc-val-input').addEventListener('input', (e) => {
+        el.desc = e.target.value;
+        const inlineDesc = document.querySelector(`#box-${el.id} .inline-canvas-desc`);
+        if (inlineDesc) inlineDesc.value = el.desc;
+        debouncedSave();
+      });
 
-        function updateImagePreview(el, card) {
-          const preview = card.querySelector('.image-preview');
-          const clearBtn = card.querySelector('.image-clear-btn');
-          if (!preview) return;
-          preview.innerHTML = '';
-          if (el.imageUrl) {
-            const img = document.createElement('img');
-            img.src = el.imageUrl;
-            img.className = 'w-full h-16 object-contain';
-            img.alt = '';
-            preview.appendChild(img);
-            preview.classList.remove('hidden');
-            if (clearBtn) clearBtn.classList.remove('hidden');
-          } else {
-            preview.classList.add('hidden');
-            if (clearBtn) clearBtn.classList.add('hidden');
-          }
+      // Image handling
+      const imageUrlInput = card.querySelector('.image-url-input');
+      const imageFileInput = card.querySelector('.image-file-input');
+      const imageClearBtn = card.querySelector('.image-clear-btn');
+
+      function updateImagePreview(el, card) {
+        const preview = card.querySelector('.image-preview');
+        const clearBtn = card.querySelector('.image-clear-btn');
+        if (!preview) return;
+        preview.innerHTML = '';
+        if (el.imageUrl) {
+          const img = document.createElement('img');
+          img.src = el.imageUrl;
+          img.className = 'w-full h-16 object-contain';
+          img.alt = '';
+          preview.appendChild(img);
+          preview.classList.remove('hidden');
+          if (clearBtn) clearBtn.classList.remove('hidden');
+        } else {
+          preview.classList.add('hidden');
+          if (clearBtn) clearBtn.classList.add('hidden');
         }
+      }
 
-        if (imageUrlInput) {
-          imageUrlInput.addEventListener('input', (e) => {
-            el.imageUrl = e.target.value;
-            const boxEl = document.getElementById(`box-${el.id}`);
-            if (boxEl) {
-              let imgEl = boxEl.querySelector('.ref-image');
-              if (el.imageUrl) {
-                if (!imgEl) {
-                  imgEl = document.createElement('img');
-                  imgEl.className = 'ref-image';
-                  imgEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;pointer-events:none;z-index:0;';
-                  imgEl.draggable = false;
-                  boxEl.insertBefore(imgEl, boxEl.firstChild);
-                }
-                imgEl.src = el.imageUrl;
-              } else if (imgEl) {
-                imgEl.remove();
+      if (imageUrlInput) {
+        imageUrlInput.addEventListener('input', (e) => {
+          el.imageUrl = e.target.value;
+          const boxEl = document.getElementById(`box-${el.id}`);
+          if (boxEl) {
+            let imgEl = boxEl.querySelector('.ref-image');
+            if (el.imageUrl) {
+              if (!imgEl) {
+                imgEl = document.createElement('img');
+                imgEl.className = 'ref-image';
+                imgEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;pointer-events:none;z-index:0;';
+                imgEl.draggable = false;
+                boxEl.insertBefore(imgEl, boxEl.firstChild);
               }
+              imgEl.src = el.imageUrl;
+            } else if (imgEl) {
+              imgEl.remove();
             }
-            updateImagePreview(el, card);
-            debouncedSave();
-          });
-        }
+          }
+          updateImagePreview(el, card);
+          debouncedSave();
+        });
+      }
 
-        if (imageFileInput) {
-          imageFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              el.imageUrl = ev.target.result;
-              renderAll(true);
-            };
-            reader.readAsDataURL(file);
-            imageFileInput.value = '';
-          });
-        }
-
-        if (imageClearBtn) {
-          imageClearBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            el.imageUrl = '';
+      if (imageFileInput) {
+        imageFileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            el.imageUrl = ev.target.result;
             renderAll(true);
-          });
-        }
+          };
+          reader.readAsDataURL(file);
+          imageFileInput.value = '';
+        });
+      }
 
-        card.querySelector('.delete-btn').addEventListener('click', (e) => {
+      if (imageClearBtn) {
+        imageClearBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          state.elements = state.elements.filter(item => item.id !== el.id);
-          if (state.selectedId === el.id) state.selectedId = null;
-          renderAll();
+          el.imageUrl = '';
+          renderAll(true);
         });
+      }
 
-        const swatchesContainer = card.querySelector('.element-swatches-container');
-        const colorPickerIn = card.querySelector('.layer-color-picker');
+      // Delete
+      card.querySelector('.delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.elements = state.elements.filter(item => item.id !== el.id);
+        if (state.selectedId === el.id) state.selectedId = null;
+        renderAll();
+      });
 
-        (el.color_palette || []).forEach((color, idx) => {
-          const circle = document.createElement('div');
-          circle.className = 'w-5 h-5 rounded-full border border-slate-700 relative group cursor-pointer shadow-md shadow-black/40 ring-1 ring-white/10 hover:border-slate-500 hover:ring-white/20 transition';
-          circle.style.backgroundColor = color;
-          
-          circle.onclick = (ev) => {
-            ev.stopPropagation();
-            openColorPicker({
-              currentColor: color,
-              anchorEl: ev.currentTarget,
-              onCommit: (newColor) => {
-                el.color_palette[idx] = newColor;
-                renderAll();
-              }
-            });
-          };
+      // Duplicate
+      card.querySelector('.duplicate-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleDuplicateElement(el.id);
+      });
 
-          const delBadge = document.createElement('div');
-          delBadge.className = 'absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 flex items-center justify-center text-[7px] font-bold opacity-0 group-hover:opacity-100 transition-opacity';
-          delBadge.textContent = '×';
-          delBadge.onclick = (ev) => {
-            ev.stopPropagation();
-            el.color_palette.splice(idx, 1);
-            renderAll();
-          };
-          circle.appendChild(delBadge);
+      // Hide/Show toggle
+      card.querySelector('.hide-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.hidden = !el.hidden;
+        renderAll(true);
+      });
 
-          swatchesContainer.appendChild(circle);
+      // Ungroup
+      const ungroupBtn = card.querySelector('.ungroup-btn');
+      if (ungroupBtn) {
+        ungroupBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          ungroupElement(el.id);
         });
+      }
 
-        colorPickerIn.addEventListener('click', (ev) => {
+      // Visual color
+      card.querySelector('.vis-color-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openColorPicker({
+          currentColor: el.visualColor || '#6366f1',
+          anchorEl: e.currentTarget,
+          onCommit: (color) => {
+            el.visualColor = color;
+            renderAll(true);
+          }
+        });
+      });
+
+      // Swatches
+      const swatchesContainer = card.querySelector('.element-swatches-container');
+      const colorPickerIn = card.querySelector('.layer-color-picker');
+
+      (el.color_palette || []).forEach((color, idx) => {
+        const circle = document.createElement('div');
+        circle.className = 'w-5 h-5 rounded-full border border-slate-700 relative group cursor-pointer shadow-md shadow-black/40 ring-1 ring-white/10 hover:border-slate-500 hover:ring-white/20 transition';
+        circle.style.backgroundColor = color;
+        
+        circle.onclick = (ev) => {
           ev.stopPropagation();
           openColorPicker({
-            currentColor: '#6366f1',
+            currentColor: color,
             anchorEl: ev.currentTarget,
-            onCommit: (color) => {
-              if (el.color_palette.length < 5) {
-                el.color_palette.push(color);
-              }
+            onCommit: (newColor) => {
+              el.color_palette[idx] = newColor;
               renderAll();
             }
           });
-        });
+        };
 
-        DOM.elementsList.appendChild(card);
+        const delBadge = document.createElement('div');
+        delBadge.className = 'absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 flex items-center justify-center text-[7px] font-bold opacity-0 group-hover:opacity-100 transition-opacity';
+        delBadge.textContent = '×';
+        delBadge.onclick = (ev) => {
+          ev.stopPropagation();
+          el.color_palette.splice(idx, 1);
+          renderAll();
+        };
+        circle.appendChild(delBadge);
+
+        swatchesContainer.appendChild(circle);
       });
+
+      colorPickerIn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openColorPicker({
+          currentColor: '#6366f1',
+          anchorEl: ev.currentTarget,
+          onCommit: (color) => {
+            if (el.color_palette.length < 5) {
+              el.color_palette.push(color);
+            }
+            renderAll();
+          }
+        });
+      });
+
+      // --- Drag & Drop (per-card handlers delegate to container-level) ---
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', el.id);
+        e.dataTransfer.effectAllowed = 'move';
+        card.classList.add('dragging-source');
+        DOM.elementsList.classList.add('dragging-active');
+        _dropSourceId = el.id;
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging-source');
+        DOM.elementsList.classList.remove('dragging-active');
+        clearDropIndicator();
+        _dropSourceId = null;
+      });
+
+      if (appendTo) {
+        appendTo.appendChild(card);
+      } else {
+        DOM.elementsList.appendChild(card);
+      }
+    }
+
+    function handleReorder(draggedId, targetId, insertAfter, dropGroupId) {
+      const draggedIdx = state.elements.findIndex(el => el.id === draggedId);
+      if (draggedIdx === -1) return;
+
+      const [moved] = state.elements.splice(draggedIdx, 1);
+      const prevGroup = moved.group;
+
+      let insertIdx;
+      if (!targetId) {
+        insertIdx = state.elements.length; // append at end
+      } else {
+        const targetIdx = state.elements.findIndex(el => el.id === targetId);
+        if (targetIdx === -1) {
+          state.elements.splice(draggedIdx, 0, moved); // put back
+          return;
+        }
+        insertIdx = insertAfter ? targetIdx + 1 : targetIdx;
+      }
+
+      // Adjust for removal shifting indices left when source was before target
+      if (draggedIdx < insertIdx) {
+        insertIdx--;
+      }
+
+      state.elements.splice(insertIdx, 0, moved);
+      moved.group = dropGroupId || null;
+
+      if (prevGroup && prevGroup !== moved.group) {
+        const remaining = state.elements.filter(el => el.group === prevGroup);
+        if (remaining.length === 0) {
+          delete _groupNames[prevGroup];
+          _collapsedGroups.delete(prevGroup);
+        }
+      }
+
+      state.selectedId = moved.id;
+    }
+
+    function handleReorderGroup(groupId, targetEl, insertAfter) {
+      // Collect all elements in this group
+      const groupElements = state.elements.filter(el => el.group === groupId);
+      if (groupElements.length === 0) return;
+
+      const firstIdx = state.elements.indexOf(groupElements[0]);
+      const lastIdx = state.elements.indexOf(groupElements[groupElements.length - 1]);
+      const groupSize = groupElements.length;
+
+      // Calculate target insert index from DOM target element
+      let rawInsertIdx;
+      if (!targetEl) {
+        rawInsertIdx = state.elements.length;
+      } else if (targetEl.dataset.groupId) {
+        // Target is a group wrapper
+        const tFirstIdx = state.elements.findIndex(el => el.group === targetEl.dataset.groupId);
+        if (tFirstIdx === -1) {
+          rawInsertIdx = state.elements.length;
+        } else {
+          const tLastIdx = state.elements.map(el => el.group).lastIndexOf(targetEl.dataset.groupId);
+          rawInsertIdx = insertAfter ? tLastIdx + 1 : tFirstIdx;
+        }
+      } else {
+        // Target is a card
+        const targetId = targetEl.dataset.elementId || targetEl.querySelector('[draggable]')?.dataset?.elementId;
+        if (!targetId) {
+          rawInsertIdx = state.elements.length;
+        } else {
+          const tIdx = state.elements.findIndex(el => el.id === targetId);
+          rawInsertIdx = tIdx === -1 ? state.elements.length : (insertAfter ? tIdx + 1 : tIdx);
+        }
+      }
+
+      // Remove group elements from the array
+      state.elements.splice(firstIdx, groupSize);
+
+      // Adjust insert index for the removal
+      let insertIdx = rawInsertIdx;
+      if (rawInsertIdx > lastIdx) {
+        insertIdx = rawInsertIdx - groupSize;
+      }
+      // Dropping within own original position — append at end
+      if (rawInsertIdx >= firstIdx && rawInsertIdx <= lastIdx + 1) {
+        insertIdx = state.elements.length;
+      }
+
+      insertIdx = Math.max(0, Math.min(state.elements.length, insertIdx));
+
+      // Re-insert the group block
+      state.elements.splice(insertIdx, 0, ...groupElements);
+      state.selectedId = groupElements[0].id;
+    }
+
+    function mergeGroups(sourceGroupId, targetGroupId, targetEl, insertAfter) {
+      const sourceElements = state.elements.filter(el => el.group === sourceGroupId);
+      if (sourceElements.length === 0) return;
+
+      delete _groupNames[sourceGroupId];
+      _collapsedGroups.delete(sourceGroupId);
+
+      sourceElements.forEach(el => { el.group = targetGroupId; });
+
+      const firstSrcIdx = state.elements.indexOf(sourceElements[0]);
+      const lastSrcIdx = state.elements.indexOf(sourceElements[sourceElements.length - 1]);
+      const srcSize = sourceElements.length;
+
+      let rawInsertIdx;
+      if (!targetEl) {
+        rawInsertIdx = state.elements.length;
+      } else if (targetEl.dataset.groupId) {
+        const tFirstIdx = state.elements.findIndex(el => el.group === targetEl.dataset.groupId);
+        if (tFirstIdx === -1) {
+          rawInsertIdx = state.elements.length;
+        } else {
+          const tLastIdx = state.elements.map(el => el.group).lastIndexOf(targetEl.dataset.groupId);
+          rawInsertIdx = insertAfter ? tLastIdx + 1 : tFirstIdx;
+        }
+      } else {
+        const targetId = targetEl.dataset.elementId || targetEl.querySelector('[draggable]')?.dataset?.elementId;
+        if (!targetId) {
+          rawInsertIdx = state.elements.length;
+        } else {
+          const tIdx = state.elements.findIndex(el => el.id === targetId);
+          rawInsertIdx = tIdx === -1 ? state.elements.length : (insertAfter ? tIdx + 1 : tIdx);
+        }
+      }
+
+      state.elements.splice(firstSrcIdx, srcSize);
+
+      let insertIdx = rawInsertIdx;
+      if (rawInsertIdx > lastSrcIdx) {
+        insertIdx = rawInsertIdx - srcSize;
+      }
+      if (rawInsertIdx >= firstSrcIdx && rawInsertIdx <= lastSrcIdx + 1) {
+        insertIdx = state.elements.length;
+      }
+      insertIdx = Math.max(0, Math.min(state.elements.length, insertIdx));
+
+      state.elements.splice(insertIdx, 0, ...sourceElements);
+      state.selectedId = sourceElements[0].id;
     }
 
     function renderCanvasBoxes() {
@@ -2181,10 +2833,14 @@
       }
 
       state.elements.forEach(el => {
+        if (el.hidden) return;
         const isSelected = el.id === state.selectedId;
         const box = document.createElement('div');
         box.id = `box-${el.id}`;
-        box.className = `absolute border ${isSelected ? 'border-indigo-500 bg-indigo-500/10 z-20 shadow-lg' : 'border-slate-700 bg-slate-900/40 z-10 hover:border-slate-500'}`;
+        const borderColor = el.visualColor ? el.visualColor : (isSelected ? '#6366f1' : '#334155');
+        box.className = `absolute border ${isSelected ? 'z-20 shadow-lg' : 'z-10'}`;
+        box.style.borderColor = borderColor;
+        box.style.backgroundColor = isSelected ? `${borderColor}18` : 'rgba(15, 23, 42, 0.25)';
         
         box.style.top = `${el.y1 / 10}%`;
         box.style.left = `${el.x1 / 10}%`;
@@ -2194,7 +2850,10 @@
         // Tag label for non-text elements
         if (el.type !== 'text') {
           const tag = document.createElement('div');
-          tag.className = `absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-mono font-bold select-none pointer-events-none ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-850 text-slate-300'}`;
+          const tagBg = isSelected ? '#6366f1' : '#1e293b';
+          tag.className = `absolute top-1 left-1 px-1 py-0.5 rounded text-[8px] font-mono font-bold select-none pointer-events-none`;
+          tag.style.backgroundColor = tagBg;
+          tag.style.color = '#fff';
           tag.innerHTML = `<span class="coords-display opacity-60 text-[7px]">${el.type.toUpperCase()} ${el.y1},${el.x1}</span>`;
           box.appendChild(tag);
         }
@@ -2348,19 +3007,29 @@
       if (prevId) {
         const prevBox = document.getElementById(`box-${prevId}`);
         if (prevBox) {
-          prevBox.className = 'absolute border border-slate-700 bg-slate-900/40 z-10 hover:border-slate-500';
+          const prevEl = state.elements.find(e => e.id === prevId);
+          const prevBorder = prevEl?.visualColor || '#334155';
+          const prevHidden = prevEl?.hidden ? 'opacity-30' : '';
+          prevBox.className = `absolute border z-10 ${prevHidden}`;
+          prevBox.style.borderColor = prevBorder;
+          prevBox.style.backgroundColor = 'rgba(15, 23, 42, 0.25)';
           prevBox.querySelectorAll('.resize-handle').forEach(rh => rh.remove());
         }
         const prevForm = document.getElementById(`form-${prevId}`);
         if (prevForm) {
-          prevForm.className = 'p-4 rounded-xl border transition border-slate-800 bg-slate-950/50';
+          prevForm.className = `p-4 rounded-xl border transition border-slate-800 bg-slate-950/50 ${state.elements.find(e => e.id === prevId)?.hidden ? 'element-hidden' : ''}`;
         }
       }
 
       // Highlight new selection
       const newBox = document.getElementById(`box-${id}`);
       if (newBox) {
-        newBox.className = 'absolute border border-indigo-500 bg-indigo-500/10 z-20 shadow-lg';
+        const newEl = state.elements.find(e => e.id === id);
+        const newBorder = newEl?.visualColor || '#6366f1';
+        const newHidden = newEl?.hidden ? 'opacity-30' : '';
+        newBox.className = `absolute border z-20 shadow-lg ${newHidden}`;
+        newBox.style.borderColor = newBorder;
+        newBox.style.backgroundColor = `${newBorder}18`;
         if (!newBox.querySelector('.resize-handle')) {
           ['n','s','e','w','nw','ne','se','sw'].forEach(dir => {
             const rh = document.createElement('div');
@@ -2374,7 +3043,7 @@
 
       const newForm = document.getElementById(`form-${id}`);
       if (newForm) {
-        newForm.className = 'p-4 rounded-xl border transition border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500';
+        newForm.className = `p-4 rounded-xl border transition border-indigo-500 bg-indigo-500/10 ring-1 ring-indigo-500 ${state.elements.find(e => e.id === id)?.hidden ? 'element-hidden' : ''}`;
         newForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
@@ -2698,8 +3367,18 @@
         styleDescription: state.styleDescription,
         background: state.background,
         elements: state.elements,
-        selectedId: state.selectedId
+        selectedId: state.selectedId,
+        groupNames: _groupNames,
+        collapsedGroups: Array.from(_collapsedGroups)
       };
+    }
+
+    function normalizeElement(el) {
+      el.hidden = el.hidden || false;
+      el.group = el.group || null;
+      el.visualColor = el.visualColor || null;
+      el.imageUrl = el.imageUrl || '';
+      return el;
     }
 
     function restoreState(data) {
@@ -2708,8 +3387,10 @@
       state.highLevelDescription = data.highLevelDescription || '';
       state.styleDescription = JSON.parse(JSON.stringify(data.styleDescription || { fields: [], color_palette: [] }));
       state.background = data.background || '';
-      state.elements = (data.elements || []).map(el => ({ ...el }));
+      state.elements = (data.elements || []).map(el => normalizeElement({ ...el }));
       state.selectedId = data.selectedId || null;
+      _groupNames = data.groupNames || {};
+      _collapsedGroups = new Set(data.collapsedGroups || []);
 
       DOM.hldInput.value = state.highLevelDescription;
       DOM.backgroundInput.value = state.background;
@@ -2806,7 +3487,7 @@
     function restoreFromGenerated(data) {
       state.highLevelDescription = data.high_level_description || '';
       state.background = data.compositional_deconstruction?.background || '';
-      state.elements = (data.compositional_deconstruction?.elements || []).map(el => ({
+      state.elements = (data.compositional_deconstruction?.elements || []).map(el => normalizeElement({
         id: 'el_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         type: el.type || 'obj',
         text: el.text || '',
@@ -2819,6 +3500,8 @@
         imageUrl: ''
       }));
       state.selectedId = null;
+      _groupNames = {};
+      _collapsedGroups = new Set();
 
       if (data.style_description && typeof data.style_description === 'object') {
         const palette = data.style_description.color_palette || [];
