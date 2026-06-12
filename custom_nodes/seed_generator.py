@@ -1,5 +1,4 @@
 import hashlib
-import random
 
 
 class SeedGenerator:
@@ -8,7 +7,6 @@ class SeedGenerator:
         return {
             "required": {
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
-                "mode": (["fixed", "random", "step", "phrase"],),
             },
             "optional": {
                 "phrase": ("STRING", {"default": "", "multiline": False}),
@@ -20,19 +18,10 @@ class SeedGenerator:
     FUNCTION = "generate_seed"
     CATEGORY = "utilities"
 
-    def generate_seed(self, seed, mode, phrase=""):
-        if mode == "fixed":
-            value = seed
-        elif mode == "random":
-            value = random.randint(0, 0xffffffffffffffff)
-        elif mode == "step":
-            value = seed + 1
-        elif mode == "phrase":
-            if not phrase:
-                value = seed
-            else:
-                digest = hashlib.sha256(phrase.encode()).digest()
-                value = int.from_bytes(digest[:8], byteorder="big")
+    def generate_seed(self, seed, phrase=""):
+        if phrase:
+            digest = hashlib.sha256(phrase.encode()).digest()
+            value = int.from_bytes(digest[:8], byteorder="big")
         else:
             value = seed
         return (value, str(value))
